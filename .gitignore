@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+*.pyc
+results/*.png
+results/*.pdf
+results/*.svg
+results/*.xlsx
+results/raw_requests.csv

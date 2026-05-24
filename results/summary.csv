@@ -1,0 +1,4 @@
+scenario,policy,mean_response_time,p95_response_time,origin_free_rate,neighbor_failure_rate,zipf_alpha,es_availability,origin_delay,local_es_count,neighbor_group_size,k
+baseline,B0,101.247,201.405,0.5503,0.0,1.1,0.82,180.0,3,5,3
+baseline,B1,45.214,70.844,0.979,0.0468,1.1,0.82,180.0,3,5,3
+baseline,B2,45.17,70.909,0.9788,0.0474,1.1,0.82,180.0,3,5,3
