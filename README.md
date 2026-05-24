@@ -23,12 +23,14 @@ pip install -r requirements.txt
 
 ```powershell
 python scripts\run_experiment.py
+python scripts\run_sweep.py
 python scripts\build_report.py
 ```
 
 Primary outputs:
 
 - `results/summary.csv`: reproducible machine-readable summary.
+- `results/sweep_summary.csv`: origin-delay and ES-availability sensitivity results.
 - `results/edge_cache_fallback_report.xlsx`: formatted workbook for reading.
 - `research_log.md`: stage-by-stage explanation of what changed and why.
 

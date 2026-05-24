@@ -4,13 +4,14 @@ from pathlib import Path
 
 import pandas as pd
 from openpyxl import Workbook
-from openpyxl.chart import BarChart, Reference
+from openpyxl.chart import BarChart, LineChart, Reference
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.table import Table, TableStyleInfo
 
 ROOT = Path(__file__).resolve().parents[1]
 SUMMARY_PATH = ROOT / "results" / "summary.csv"
+SWEEP_PATH = ROOT / "results" / "sweep_summary.csv"
 REPORT_PATH = ROOT / "results" / "edge_cache_fallback_report.xlsx"
 
 
@@ -19,17 +20,39 @@ def main() -> None:
         raise FileNotFoundError("Run scripts/run_experiment.py before building the report.")
 
     data = pd.read_csv(SUMMARY_PATH)
+    sweep_data = pd.read_csv(SWEEP_PATH) if SWEEP_PATH.exists() else None
     workbook = Workbook()
     overview = workbook.active
     overview.title = "Overview"
     parameters = workbook.create_sheet("Parameters")
     summary = workbook.create_sheet("Summary")
     charts = workbook.create_sheet("Charts")
+    origin_sweep = workbook.create_sheet("Origin Delay Sweep")
+    availability_sweep = workbook.create_sheet("ES Availability Sweep")
+    b2_advantage = workbook.create_sheet("B2 Advantage")
 
-    _build_overview(overview, data)
+    _build_overview(overview, data, sweep_data)
     _build_parameters(parameters, data)
     _build_summary(summary, data)
     _build_charts(charts, data)
+    if sweep_data is not None:
+        _build_sweep_sheet(
+            origin_sweep,
+            sweep_data[sweep_data["sweep_name"] == "origin_delay"],
+            "origin_delay",
+            "Origin Delay Sweep",
+        )
+        _build_sweep_sheet(
+            availability_sweep,
+            sweep_data[sweep_data["sweep_name"] == "es_availability"],
+            "es_availability",
+            "ES Availability Sweep",
+        )
+        _build_b2_advantage(b2_advantage, sweep_data)
+    else:
+        _build_empty_sweep_note(origin_sweep)
+        _build_empty_sweep_note(availability_sweep)
+        _build_empty_sweep_note(b2_advantage)
 
     for sheet in workbook.worksheets:
         sheet.sheet_view.showGridLines = False
@@ -40,9 +63,14 @@ def main() -> None:
     print(f"Wrote {REPORT_PATH}")
 
 
-def _build_overview(sheet, data: pd.DataFrame) -> None:
+def _build_overview(sheet, data: pd.DataFrame, sweep_data: pd.DataFrame | None) -> None:
     best_mean = data.loc[data["mean_response_time"].idxmin()]
     best_p95 = data.loc[data["p95_response_time"].idxmin()]
+    sweep_note = (
+        "Sweep results included: origin delay and ES availability."
+        if sweep_data is not None
+        else "No sweep results found yet. Run scripts/run_sweep.py to add them."
+    )
 
     rows = [
         ["Edge Cache Fallback Report", ""],
@@ -51,6 +79,7 @@ def _build_overview(sheet, data: pd.DataFrame) -> None:
         ["Best mean response time", f"{best_mean['policy']} ({best_mean['mean_response_time']:.3f})"],
         ["Best p95 response time", f"{best_p95['policy']} ({best_p95['p95_response_time']:.3f})"],
         ["Main use", "Readable first-stage report; CSV remains the reproducible data source."],
+        ["Sweep status", sweep_note],
     ]
     for row in rows:
         sheet.append(row)
@@ -62,6 +91,8 @@ def _build_overview(sheet, data: pd.DataFrame) -> None:
         cell.font = Font(bold=True)
     sheet["A6"].alignment = Alignment(wrap_text=True)
     sheet["B6"].alignment = Alignment(wrap_text=True)
+    sheet["A7"].alignment = Alignment(wrap_text=True)
+    sheet["B7"].alignment = Alignment(wrap_text=True)
 
 
 def _build_parameters(sheet, data: pd.DataFrame) -> None:
@@ -125,6 +156,107 @@ def _build_charts(sheet, data: pd.DataFrame) -> None:
     _add_chart(sheet, "P95 Response Time", 3, "G18")
     _add_chart(sheet, "Origin-Free Rate", 4, "A18")
     _add_chart(sheet, "Neighbor Failure Rate", 5, "A34")
+
+
+def _build_sweep_sheet(sheet, data: pd.DataFrame, sweep_name: str, title: str) -> None:
+    if data.empty:
+        _build_empty_sweep_note(sheet)
+        return
+
+    sheet.append([title])
+    sheet["A1"].font = Font(size=14, bold=True, color="FFFFFF")
+    sheet["A1"].fill = PatternFill("solid", fgColor="1F4E79")
+    sheet.merge_cells("A1:F1")
+
+    metrics = [
+        "mean_response_time",
+        "p95_response_time",
+        "origin_free_rate",
+        "neighbor_failure_rate",
+    ]
+    start_row = 3
+    for metric in metrics:
+        pivot = (
+            data.pivot(index="sweep_value", columns="policy", values=metric)
+            .reset_index()
+            .sort_values("sweep_value")
+        )
+        pivot.columns.name = None
+        headers = [sweep_name, "B0", "B1", "B2"]
+        sheet.append(headers)
+        for row in pivot[["sweep_value", "B0", "B1", "B2"]].itertuples(index=False):
+            sheet.append(list(row))
+        _style_header(sheet, f"A{start_row}:D{start_row}")
+        _add_line_chart(
+            sheet,
+            title=metric,
+            min_row=start_row,
+            max_row=start_row + len(pivot),
+            anchor=f"F{start_row}",
+            percent=("rate" in metric),
+        )
+        start_row += len(pivot) + 17
+
+
+def _build_b2_advantage(sheet, sweep_data: pd.DataFrame) -> None:
+    sheet.append(["B2 Advantage vs B1"])
+    sheet["A1"].font = Font(size=14, bold=True, color="FFFFFF")
+    sheet["A1"].fill = PatternFill("solid", fgColor="1F4E79")
+    sheet.merge_cells("A1:E1")
+
+    rows = [["sweep_name", "sweep_value", "b1_mean", "b2_mean", "b2_advantage_vs_b1"]]
+    for (sweep_name, sweep_value), group in sweep_data.groupby(["sweep_name", "sweep_value"]):
+        b1_mean = float(group.loc[group["policy"] == "B1", "mean_response_time"].iloc[0])
+        b2_mean = float(group.loc[group["policy"] == "B2", "mean_response_time"].iloc[0])
+        rows.append([sweep_name, sweep_value, b1_mean, b2_mean, round(b1_mean - b2_mean, 3)])
+
+    for row in rows:
+        sheet.append(row)
+    _style_header(sheet, "A2:E2")
+    _add_table(sheet, f"A2:E{len(rows) + 1}", "B2AdvantageTable")
+
+    chart = BarChart()
+    chart.title = "B2 Mean Response-Time Advantage vs B1"
+    chart.y_axis.title = "B1 mean - B2 mean"
+    chart.x_axis.title = "Sweep case"
+    chart.height = 8
+    chart.width = 16
+    data = Reference(sheet, min_col=5, min_row=2, max_row=len(rows) + 1)
+    cats = Reference(sheet, min_col=2, min_row=3, max_row=len(rows) + 1)
+    chart.add_data(data, titles_from_data=True)
+    chart.set_categories(cats)
+    chart.legend = None
+    sheet.add_chart(chart, "G2")
+
+
+def _build_empty_sweep_note(sheet) -> None:
+    sheet.append(["Sweep results not available"])
+    sheet.append(["Run scripts/run_sweep.py, then rerun scripts/build_report.py."])
+    sheet["A1"].font = Font(size=14, bold=True, color="FFFFFF")
+    sheet["A1"].fill = PatternFill("solid", fgColor="1F4E79")
+
+
+def _add_line_chart(
+    sheet,
+    title: str,
+    min_row: int,
+    max_row: int,
+    anchor: str,
+    percent: bool = False,
+) -> None:
+    chart = LineChart()
+    chart.title = title
+    chart.y_axis.title = title
+    chart.x_axis.title = "Sweep value"
+    chart.height = 7
+    chart.width = 12
+    values = Reference(sheet, min_col=2, max_col=4, min_row=min_row, max_row=max_row)
+    categories = Reference(sheet, min_col=1, min_row=min_row + 1, max_row=max_row)
+    chart.add_data(values, titles_from_data=True)
+    chart.set_categories(categories)
+    if percent:
+        chart.y_axis.numFmt = "0%"
+    sheet.add_chart(chart, anchor)
 
 
 def _add_chart(sheet, title: str, value_col: int, anchor: str) -> None:
