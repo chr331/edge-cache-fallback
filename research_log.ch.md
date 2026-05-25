@@ -120,3 +120,27 @@ B2 advantage vs B1 = B1 mean_response_time - B2 mean_response_time
 ### 当前阶段判断
 
 第一阶段代码层面的主要缺口已经补上：现在不仅能跑 baseline 和单 seed sweep，也能汇报 Monte Carlo variance、confidence interval 和二维参数区域下的 B2 advantage。本阶段已用默认 `trials = 10`、`num_requests = 10000` 生成 `repeated_summary.csv`、`grid_summary.csv` 和 `repeated_trials.csv`，并重新生成 Excel 报告。下一步是检查 heatmap 中 B2 明显优于 B1 的区域，再决定是否写正式进度 memo。
+
+## 2026-05-25：第一阶段图表与结果解释
+
+### 本阶段主题
+
+这一阶段把已生成的 repeated-trial 和 grid 结果整理成 Nature-style 静态图表，并写出中日双语结果解读。重点不是新增模型，而是把第一阶段结果转成可读、可汇报、可复查的材料。
+
+### 做了什么
+
+- 安装并记录 `matplotlib` 依赖，用 Python 绘制图表。
+- 新增 `scripts/build_figures.py`，从 `results/repeated_summary.csv` 和 `results/grid_summary.csv` 读取数据。
+- 生成 baseline mean、baseline p95、origin-delay sweep、ES-availability sweep 和 B2 advantage heatmap。
+- 每张图输出 `.svg`、`.pdf`、`.png` 和 `.tiff`，其中 `.svg` 保留可编辑文字。
+- 新增 `phase1_results.ch.md` 和 `phase1_results.ja.md`，解释实验设置、repeated trials、confidence interval、B2 advantage 和当前限制。
+
+### 当前结果判断
+
+baseline 下，`B1` 与 `B2` 的平均响应时间几乎相同：`B1 = 44.8589`，`B2 = 44.8391`，B2 相对 B1 的 advantage 只有 `0.0198`。因此 baseline 下不能夸大 B2，只能说 B2 维持了与 B1 接近的性能。
+
+二维 grid 中，36 个参数点里有 20 个点的 B2 advantage 为正。最大优势出现在 `origin_delay = 40.0`、`es_availability = 0.45`，为 `18.0856`。这说明 B2 的主要价值在于：当 origin 较快、neighbor 可用性较低时，B2 能避免 B1 固定搜索 neighbor 带来的额外延迟。
+
+### 下一步
+
+下一步可以基于 `phase1_results.ch.md` 和 `phase1_results.ja.md` 写一版给 Ueyama-sensei 的简短 progress memo。memo 应保持谨慎表达，强调第一阶段仿真和统计流程已经稳定，而不是把 B2 说成最终最优策略。

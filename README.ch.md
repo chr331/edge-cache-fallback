@@ -59,6 +59,7 @@ python scripts\run_repeated.py --trials 3 --num-requests 1000
 生成阅读用 Excel：
 
 ```powershell
+python scripts\build_figures.py
 python scripts\build_report.py
 ```
 
@@ -81,7 +82,10 @@ B2 advantage vs B1 = B1 mean_response_time - B2 mean_response_time
 - `results/repeated_summary.csv`: repeated trials 的 mean、std、stderr 和 95% CI。
 - `results/grid_summary.csv`: 二维 `origin_delay x es_availability` grid 的 repeated 统计。
 - `results/repeated_trials.csv`: 每个 trial 的 policy-level summary。
+- `results/figures/`: Nature-style 静态图表，包含 SVG、PDF、PNG 和 TIFF。
 - `results/edge_cache_fallback_report.xlsx`: 本地阅读用 Excel 报告，包含 repeated summary 和 B2 advantage grid sheet。
+- `phase1_results.ch.md`: 第一阶段中文结果解读。
+- `phase1_results.ja.md`: 第一阶段日文结果解读。
 
 ## 关键指标
 

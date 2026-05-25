@@ -120,3 +120,27 @@ B2 advantage vs B1 = B1 mean_response_time - B2 mean_response_time
 ### 現在の判断
 
 第一段階の code 側の主な不足は補強できました。現在は baseline と single-seed sweep だけでなく、Monte Carlo variance、confidence interval、二次元パラメータ領域における B2 advantage も報告できます。本段階ではデフォルトの `trials = 10`、`num_requests = 10000` で `repeated_summary.csv`、`grid_summary.csv`、`repeated_trials.csv` を生成し、Excel report も再生成しました。次は heatmap 上で B2 が B1 より明確に有利な領域を確認してから、正式な progress memo を書く段階です。
+
+## 2026-05-25：第一段階の figures と結果解釈
+
+### 本段階のテーマ
+
+この段階では、すでに生成した repeated-trial と grid の結果を Nature-style の static figures に整理し、中国語・日本語の結果解釈文書を作成しました。目的は新しい model を追加することではなく、第一段階の結果を読みやすく、報告しやすく、再確認しやすい形にすることです。
+
+### 実施内容
+
+- `matplotlib` dependency を追加し、Python で figures を作成できるようにしました。
+- `scripts/build_figures.py` を追加し、`results/repeated_summary.csv` と `results/grid_summary.csv` を入力として使うようにしました。
+- baseline mean、baseline p95、origin-delay sweep、ES-availability sweep、B2 advantage heatmap を生成しました。
+- 各 figure は `.svg`、`.pdf`、`.png`、`.tiff` として保存しました。`.svg` は editable text を保持します。
+- `phase1_results.ch.md` と `phase1_results.ja.md` を追加し、実験設定、repeated trials、confidence interval、B2 advantage、現在の制限を説明しました。
+
+### 現在の結果判断
+
+baseline では、`B1` と `B2` の mean response time はほぼ同じです。`B1 = 44.8589`、`B2 = 44.8391` であり、B2 の B1 に対する advantage は `0.0198` にとどまります。そのため、baseline だけで B2 が明確に優れているとは言えず、B2 は B1 と同程度の性能を維持していると解釈するのが適切です。
+
+二次元 grid では、36 個の parameter points のうち 20 点で B2 advantage が正でした。最大 advantage は `origin_delay = 40.0`、`es_availability = 0.45` のときの `18.0856` です。これは、origin が速く neighbor availability が低い場合に、B2 が B1 の固定的な neighbor-search cost を避けられることを示しています。
+
+### 次の段階
+
+次は `phase1_results.ch.md` と `phase1_results.ja.md` をもとに、Ueyama-sensei 向けの短い progress memo draft を作成できます。memo では、B2 を最終的に最適な policy と主張するのではなく、第一段階の simulation と統計処理の流れが整ったことを中心に説明するのが安全です。

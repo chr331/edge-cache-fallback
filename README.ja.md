@@ -59,6 +59,7 @@ python scripts\run_repeated.py --trials 3 --num-requests 1000
 読みやすい Excel report の生成:
 
 ```powershell
+python scripts\build_figures.py
 python scripts\build_report.py
 ```
 
@@ -81,7 +82,10 @@ B2 advantage vs B1 = B1 mean_response_time - B2 mean_response_time
 - `results/repeated_summary.csv`: repeated trials の mean、std、stderr、95% CI。
 - `results/grid_summary.csv`: 二次元 `origin_delay x es_availability` grid の repeated 統計。
 - `results/repeated_trials.csv`: trial ごとの policy-level summary。
+- `results/figures/`: Nature-style static figures。SVG、PDF、PNG、TIFF を含みます。
 - `results/edge_cache_fallback_report.xlsx`: repeated summary と B2 advantage grid sheet を含む Excel report。
+- `phase1_results.ch.md`: 第一段階の中国語 result interpretation。
+- `phase1_results.ja.md`: 第一段階の日本語 result interpretation。
 
 ## 主な指標
 

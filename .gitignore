@@ -7,4 +7,7 @@ results/*.png
 results/*.pdf
 results/*.svg
 results/*.xlsx
+results/figures/*.png
+results/figures/*.pdf
+results/figures/*.tiff
 results/raw_requests.csv

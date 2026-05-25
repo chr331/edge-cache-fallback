@@ -43,6 +43,7 @@ pip install -r requirements.txt
 python scripts\run_experiment.py
 python scripts\run_sweep.py
 python scripts\run_repeated.py
+python scripts\build_figures.py
 python scripts\build_report.py
 ```
 
@@ -59,7 +60,9 @@ python scripts\run_repeated.py --trials 3 --num-requests 1000
 - `results/repeated_summary.csv`: repeated-trial means, standard errors, and 95% confidence intervals.
 - `results/grid_summary.csv`: two-dimensional `origin_delay x es_availability` repeated sweep.
 - `results/repeated_trials.csv`: per-trial policy summaries used to build repeated statistics.
+- `results/figures/`: Nature-style static figures exported as SVG, PDF, PNG, and TIFF.
 - `results/edge_cache_fallback_report.xlsx`: formatted local workbook for reading.
+- `phase1_results.ch.md` and `phase1_results.ja.md`: bilingual first-stage result interpretation.
 - `research_log.md`: language-specific research-log index.
 
 ## CSV Schema
