@@ -57,6 +57,12 @@ sensitivity / grid の統計実行:
 python scripts\run_repeated.py
 ```
 
+Ueyama-sensei 向け memo 用 heatmap sweep:
+
+```powershell
+python scripts\run_memo_sweep.py
+```
+
 開発確認用の軽い実行:
 
 ```powershell
@@ -77,13 +83,13 @@ python scripts\build_report.py
 
 - `steady`: local と neighbor の両方を通常可用率 `0.82` にします。定常シナリオに対応します。
 - `low_reliability_neighbor`: local は `0.82` のまま、neighbor を `0.25` に下げます。低信頼近隣ESシナリオに対応します。
-- `origin_congestion`: local / neighbor は `0.82` のまま、origin delay を `320.0` に上げます。オリジン輻輳シナリオに対応します。
+- `origin_congestion`: local / neighbor は `0.82` のまま、origin delay を `320.0` に上げます。これは既存出力との互換性のための内部名であり、対外的にはオリジン遅延増加シナリオとして説明します。実際の queueing や server congestion を表すモデルではありません。
 
 今回追加した `neighbor_es_availability` により、「local は通常だが近隣協調グループだけが低信頼」という条件を表現できます。
 
 ## repeated trials と grid sweep
 
-`scripts/run_repeated.py` はデフォルトで baseline、`origin_delay` sweep、`es_availability` sweep、二次元の `origin_delay x es_availability` grid を repeated trials として実行します。デフォルトは `trials = 10` で、各 trial の seed は `base_seed + trial_index` として設定します。これにより Monte Carlo variance と 95% confidence interval を報告できます。
+`scripts/run_repeated.py` はデフォルトで baseline、`origin_delay` sweep、`es_availability` sweep、二次元の `origin_delay x neighbor_es_availability` grid を repeated trials として実行します。デフォルトは `trials = 10` で、各 trial の seed は `base_seed + trial_index` として設定します。これにより Monte Carlo variance と 95% confidence interval を報告できます。
 
 二次元 grid では次の値を計算します。
 
@@ -100,10 +106,12 @@ B2 advantage vs B1 = B1 mean_response_time - B2 mean_response_time
 - `results/scenario_summary.csv`: 三つの正式 scenario の repeated-trial summary。
 - `results/scenario_trials.csv`: 三つの正式 scenario の trial ごとの summary。
 - `results/repeated_summary.csv`: repeated trials の mean、std、stderr、95% CI。
-- `results/grid_summary.csv`: 二次元 `origin_delay x es_availability` grid の repeated 統計。
+- `results/grid_summary.csv`: 二次元 `origin_delay x neighbor_es_availability` grid の repeated 統計。
+- `results/memo_heatmap_summary.csv`: 代表 scenario の parameter を含む memo 用 sensitivity grid。
 - `results/repeated_trials.csv`: trial ごとの policy-level summary。
 - `results/figures/`: Nature-style static figures。SVG、PDF、PNG、TIFF を含みます。
 - `results/edge_cache_fallback_report.xlsx`: repeated summary と B2 advantage grid sheet を含む Excel report。
+- `memo/phase1_progress_memo_ja.tex`: Ueyama-sensei 向け 2 ページ進捗メモの LaTeX source。
 - `phase1_results.ch.md`: 第一段階の中国語 result interpretation。
 - `phase1_results.ja.md`: 第一段階の日本語 result interpretation。
 

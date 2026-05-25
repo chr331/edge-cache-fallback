@@ -42,7 +42,7 @@ SCENARIO_ORDER = ["steady", "low_reliability_neighbor", "origin_congestion"]
 SCENARIO_LABELS = {
     "steady": "Steady",
     "low_reliability_neighbor": "Low-reliability\nneighbor",
-    "origin_congestion": "Origin\ncongestion",
+    "origin_congestion": "Origin delay\nincrease",
 }
 POLICY_COLORS = {
     "B0": "#484878",
@@ -66,6 +66,7 @@ def main() -> None:
     repeated_rows = _read_csv(RESULTS_DIR / "repeated_summary.csv")
     grid_rows = _read_csv(RESULTS_DIR / "grid_summary.csv")
     scenario_rows = _read_csv_optional(RESULTS_DIR / "scenario_summary.csv")
+    memo_heatmap_rows = _read_csv_optional(RESULTS_DIR / "memo_heatmap_summary.csv")
 
     if scenario_rows:
         _plot_scenario_metric(
@@ -77,10 +78,27 @@ def main() -> None:
         )
         _plot_scenario_metric(
             scenario_rows,
+            metric="mean_response_time",
+            ylabel="Mean response time (ms)",
+            title="Mean response time",
+            filename="fig_phase1_memo_scenario_mean_response_time",
+            figsize=(3.35, 2.3),
+        )
+        _plot_scenario_metric(
+            scenario_rows,
             metric="p95_response_time",
             ylabel="p95 response time (ms)",
             title="Tail response time across formal scenarios",
             filename="fig_phase1_scenario_p95_response_time",
+        )
+        _plot_scenario_metric(
+            scenario_rows,
+            metric="p95_response_time",
+            ylabel="p95 response time (ms)",
+            title="p95 response time",
+            filename="fig_phase1_memo_scenario_p95_response_time",
+            figsize=(3.35, 2.3),
+            show_legend=False,
         )
         _plot_low_reliability_rates(scenario_rows)
 
@@ -114,7 +132,22 @@ def main() -> None:
         title="Policy sensitivity to ES availability",
         filename="fig_phase1_es_availability_sweep",
     )
-    _plot_b2_advantage_heatmap(grid_rows)
+    _plot_b2_advantage_heatmap(
+        grid_rows,
+        y_column="neighbor_es_availability",
+        y_label="neighbor ES availability",
+        title="B2 advantage over B1",
+        filename="fig_phase1_b2_advantage_heatmap",
+    )
+    if memo_heatmap_rows:
+        _plot_b2_advantage_heatmap(
+            memo_heatmap_rows,
+            y_column="neighbor_es_availability",
+            y_label="neighbor ES availability",
+            title="B2 advantage sensitivity",
+            filename="fig_phase1_memo_b2_advantage_heatmap",
+            note="",
+        )
 
     print(f"Wrote figures to {FIGURE_DIR}")
 
@@ -139,6 +172,8 @@ def _plot_scenario_metric(
     ylabel: str,
     title: str,
     filename: str,
+    figsize: tuple[float, float] = (4.85, 2.85),
+    show_legend: bool = True,
 ) -> None:
     scenario_rows = [
         row
@@ -155,7 +190,7 @@ def _plot_scenario_metric(
     if missing:
         raise ValueError(f"Missing scenario rows: {', '.join(missing)}")
 
-    fig, ax = plt.subplots(figsize=(4.85, 2.85), constrained_layout=True)
+    fig, ax = plt.subplots(figsize=figsize, constrained_layout=True)
     x = np.arange(len(SCENARIO_ORDER))
     width = 0.23
 
@@ -193,7 +228,8 @@ def _plot_scenario_metric(
     ax.set_ylabel(ylabel)
     ax.set_title(title, loc="left", fontweight="bold")
     ax.grid(axis="y", color="#E6E6E6", linewidth=0.5)
-    ax.legend(title="Policy", ncols=3, loc="upper left")
+    if show_legend:
+        ax.legend(title="Policy", ncols=3, loc="upper left")
     ax.set_axisbelow(True)
 
     _save_figure(fig, filename)
@@ -333,18 +369,28 @@ def _plot_sweep(
     _save_figure(fig, filename)
 
 
-def _plot_b2_advantage_heatmap(rows: list[dict[str, str]]) -> None:
+def _plot_b2_advantage_heatmap(
+    rows: list[dict[str, str]],
+    *,
+    y_column: str,
+    y_label: str,
+    title: str,
+    filename: str,
+    note: str = "Positive values mean B2 is faster than B1.",
+) -> None:
     b2_rows = [row for row in rows if row["policy"] == "B2"]
+    if not b2_rows:
+        raise ValueError("No B2 rows available for heatmap")
     origin_delays = sorted({_float(row["origin_delay"]) for row in b2_rows})
-    availabilities = sorted({_float(row["es_availability"]) for row in b2_rows})
+    availabilities = sorted({_float(row[y_column]) for row in b2_rows})
 
     matrix = np.full((len(availabilities), len(origin_delays)), np.nan)
     for row in b2_rows:
-        y = availabilities.index(_float(row["es_availability"]))
+        y = availabilities.index(_float(row[y_column]))
         x = origin_delays.index(_float(row["origin_delay"]))
         matrix[y, x] = _float(row["b2_advantage_vs_b1_mean"])
 
-    max_abs = float(np.nanmax(np.abs(matrix)))
+    max_abs = float(np.nanmax(np.abs(matrix))) or 1.0
     norm = TwoSlopeNorm(vcenter=0.0, vmin=-max_abs, vmax=max_abs)
 
     fig, ax = plt.subplots(figsize=(4.7, 3.1), constrained_layout=True)
@@ -355,8 +401,8 @@ def _plot_b2_advantage_heatmap(rows: list[dict[str, str]]) -> None:
         [f"{value:.2f}" for value in availabilities],
     )
     ax.set_xlabel("Origin delay (ms)")
-    ax.set_ylabel("ES availability")
-    ax.set_title("B2 advantage over B1", loc="left", fontweight="bold")
+    ax.set_ylabel(y_label)
+    ax.set_title(title, loc="left", fontweight="bold")
 
     for y_index, availability in enumerate(availabilities):
         for x_index, origin_delay in enumerate(origin_delays):
@@ -374,16 +420,17 @@ def _plot_b2_advantage_heatmap(rows: list[dict[str, str]]) -> None:
 
     cbar = fig.colorbar(image, ax=ax, shrink=0.86)
     cbar.set_label("B1 mean - B2 mean (ms)")
-    ax.text(
-        0.0,
-        -0.28,
-        "Positive values mean B2 is faster than B1.",
-        transform=ax.transAxes,
-        fontsize=7,
-        color="#4D4D4D",
-    )
+    if note:
+        ax.text(
+            0.0,
+            -0.28,
+            note,
+            transform=ax.transAxes,
+            fontsize=7,
+            color="#4D4D4D",
+        )
 
-    _save_figure(fig, "fig_phase1_b2_advantage_heatmap")
+    _save_figure(fig, filename)
 
 
 def _policy_rows(rows: object) -> list[dict[str, str]]:

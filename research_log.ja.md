@@ -149,12 +149,12 @@ baseline では、`B1` と `B2` の mean response time はほぼ同じです。`
 
 ### 本段階のテーマ
 
-この段階では、第一段階の結果を baseline / sweep から、研究計画書に対応する三つの正式 scenario へ拡張しました。対象は、定常シナリオ、低信頼近隣ESシナリオ、オリジン輻輳シナリオです。目的は、第一段階の結果を研究計画書の評価設計と対応させることです。
+この段階では、第一段階の結果を baseline / sweep から、研究計画書に対応する三つの正式 scenario へ拡張しました。対象は、定常シナリオ、低信頼近隣ESシナリオ、オリジン遅延増加シナリオです。目的は、第一段階の結果を研究計画書の評価設計と対応させることです。code では互換性のために `origin_congestion` という内部 key を残していますが、報告では実際の queueing congestion model とは区別します。
 
 ### 実施内容
 
 - local ES availability と neighbor ES availability を分離しました。`es_availability` は互換性のために残し、`neighbor_es_availability` で近隣 ES 協調グループの信頼性を個別に制御できるようにしました。
-- `src/edge_cache_sim/scenarios.py` を追加し、`steady`、`low_reliability_neighbor`、`origin_congestion` の三つの正式 scenario を定義しました。
+- `src/edge_cache_sim/scenarios.py` を追加し、`steady`、`low_reliability_neighbor`、`origin_congestion` の三つの正式 scenario を定義しました。`origin_congestion` は内部 key であり、対外的にはオリジン遅延増加シナリオとして扱います。
 - `scripts/run_scenarios.py` を追加し、`results/scenario_summary.csv` と `results/scenario_trials.csv` を出力するようにしました。
 - `scripts/build_figures.py` を更新し、三 scenario の mean response time、三 scenario の p95 response time、低信頼 neighbor scenario の rates figure を追加しました。
 - `scripts/build_report.py` を更新し、Excel report に `Formal Scenarios` sheet を追加しました。
@@ -165,7 +165,7 @@ baseline では、`B1` と `B2` の mean response time はほぼ同じです。`
 
 - `steady`: local と neighbor の両方を通常可用率 `0.82`、origin delay を `180.0` に設定します。
 - `low_reliability_neighbor`: local は `0.82` のまま、neighbor を `0.25` に下げ、origin delay は `180.0` にします。
-- `origin_congestion`: local と neighbor は `0.82` のまま、origin delay を `320.0` に上げます。
+- `origin_congestion`: local と neighbor は `0.82` のまま、origin delay を `320.0` に上げます。これはオリジン遅延増加シナリオであり、実際の congestion queue model ではありません。
 
 ### 現在の結果判断
 
@@ -173,10 +173,28 @@ baseline では、`B1` と `B2` の mean response time はほぼ同じです。`
 
 `low_reliability_neighbor` scenario が今回の補完で最も重要な結果です。`B1` の neighbor failure rate は `0.89777`、mean response time は `106.5593`、p95 response time は `229.0214` でした。一方、`B2` は無効な neighbor search をほぼ避け、mean response time は `100.7891`、p95 response time は `201.3767` でした。`B2` の `B1` に対する mean response time advantage は `5.7702` です。
 
-`origin_congestion` scenario では、origin delay の増加により `B0` が大きく悪化し、mean response time は `163.6239` になりました。`B1` と `B2` は信頼できる neighbor を利用できるため、mean response time は約 `47.6` で、`B0` より明らかに良い結果です。ただし、neighbor が信頼できるため、`B1` と `B2` の差は小さいままです。
+オリジン遅延増加シナリオでは、origin delay の増加により `B0` が大きく悪化し、mean response time は `163.6239` になりました。`B1` と `B2` は信頼できる neighbor を利用できるため、mean response time は約 `47.6` で、`B0` より明らかに良い結果です。ただし、neighbor が信頼できるため、`B1` と `B2` の差は小さいままです。
 
 ### 第一段階の状態
 
 code、results、figures、documents の観点では、第一段階は報告可能な状態まで到達しました。現在の成果物には、三 scenario の repeated results、sensitivity / grid data、confidence interval、Nature-style figures、Excel report、中国語・日本語の結果解釈が含まれます。
 
 次は Ueyama-sensei 向けの progress memo draft に進めます。memo では、現在の結果は preliminary Monte Carlo simulation であり、完全な discrete-event simulation ではないことを明確にする必要があります。また、`B2` の主な価値は、すべての scenario で `B1` を大きく上回ることではなく、低信頼 neighbor ES 条件で無効な fallback を避ける点にあると説明するのが適切です。
+
+## 2026-05-26：第一段階の日本語進捗メモと memo 用 heatmap
+
+### 本段階のテーマ
+
+この段階では、第一段階の結果を Ueyama-sensei 向けの 2 ページ日本語進捗メモ draft として整理しました。あわせて、三つの代表 scenario の parameter と完全に対応する memo 用 sensitivity sweep を追加し、heatmap が parameter selection と B2 の有効領域を補足的に説明できるようにしました。
+
+### 実施内容
+
+- `src/edge_cache_sim/memo_sweep.py` と `scripts/run_memo_sweep.py` を追加しました。local ES availability は `0.82` に固定し、近隣 ES 可用率 `[0.20, 0.25, 0.30, 0.35, 0.45, 0.55, 0.65, 0.82]` と origin delay `[80, 120, 180, 240, 320]` を走査します。
+- `results/memo_heatmap_summary.csv` を生成しました。この grid は、低信頼近隣 ES scenario の `0.25`、定常 scenario の `0.82 / 180`、オリジン遅延増加 scenario の `0.82 / 320` を含みます。
+- `scripts/build_figures.py` を更新し、memo 用の mean response time、p95 response time、B2 advantage heatmap を生成するようにしました。heatmap の縦軸は `neighbor ES availability` に統一しました。
+- `memo/phase1_progress_memo_ja.tex` を追加しました。LuaLaTeX + `jlreq` を想定し、本文では preliminary Monte Carlo simulation と明記しています。
+- README、結果解釈、研究ログの表現を統一し、第三 scenario は対外的にオリジン遅延増加シナリオと説明するようにしました。`origin_congestion` は内部互換 key としてのみ残しています。
+
+### 現在の制限
+
+現環境には使用可能な LuaLaTeX / TeX Live がないため、`.tex` source と memo 用 PDF figures は準備済みですが、memo 本体 PDF はまだコンパイルできていません。Japanese LaTeX 環境を導入または設定した後、最終的な 2 ページ layout を確認する必要があります。

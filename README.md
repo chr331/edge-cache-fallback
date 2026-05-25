@@ -45,6 +45,7 @@ python scripts\run_experiment.py
 python scripts\run_sweep.py
 python scripts\run_scenarios.py
 python scripts\run_repeated.py
+python scripts\run_memo_sweep.py
 python scripts\build_figures.py
 python scripts\build_report.py
 ```
@@ -60,13 +61,15 @@ python scripts\run_repeated.py --trials 3 --num-requests 1000
 
 - `results/summary.csv`: baseline summary with one row per policy.
 - `results/sweep_summary.csv`: origin-delay and ES-availability sensitivity results.
-- `results/scenario_summary.csv`: repeated-trial results for the formal steady, low-reliability-neighbor, and origin-congestion scenarios.
+- `results/scenario_summary.csv`: repeated-trial results for the formal steady, low-reliability-neighbor, and origin-delay-increase scenarios. The internal key `origin_congestion` is kept only for compatibility.
 - `results/scenario_trials.csv`: per-trial policy summaries used to build the formal scenario statistics.
 - `results/repeated_summary.csv`: repeated-trial means, standard errors, and 95% confidence intervals.
-- `results/grid_summary.csv`: two-dimensional `origin_delay x es_availability` repeated sweep.
+- `results/grid_summary.csv`: two-dimensional `origin_delay x neighbor_es_availability` repeated sweep.
+- `results/memo_heatmap_summary.csv`: memo-specific sensitivity grid aligned with the formal scenario parameters.
 - `results/repeated_trials.csv`: per-trial policy summaries used to build repeated statistics.
 - `results/figures/`: Nature-style static figures exported as SVG, PDF, PNG, and TIFF.
 - `results/edge_cache_fallback_report.xlsx`: formatted local workbook for reading.
+- `memo/phase1_progress_memo_ja.tex`: two-page Japanese progress memo source for Ueyama-sensei.
 - `phase1_results.ch.md` and `phase1_results.ja.md`: bilingual first-stage result interpretation.
 - `research_log.md`: language-specific research-log index.
 

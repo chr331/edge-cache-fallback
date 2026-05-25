@@ -9,5 +9,10 @@ results/*.svg
 results/*.xlsx
 results/figures/*.png
 results/figures/*.pdf
+!results/figures/fig_phase1_memo_*.pdf
 results/figures/*.tiff
 results/raw_requests.csv
+memo/*.aux
+memo/*.log
+memo/*.out
+memo/*.synctex.gz

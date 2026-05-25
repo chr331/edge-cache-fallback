@@ -8,9 +8,13 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from edge_cache_sim import (  # noqa: E402
+    MEMO_LOCAL_ES_AVAILABILITY,
+    MEMO_NEIGHBOR_ES_AVAILABILITIES,
+    MEMO_ORIGIN_DELAYS,
     SimulationConfig,
     aggregate_trial_rows,
     formal_scenarios,
+    memo_sweep_configs,
     run_policy,
     run_repeated_trials,
     run_scenario,
@@ -202,6 +206,29 @@ class SimulatorTests(unittest.TestCase):
                     row["mean_response_time_ci95_high"],
                     row["mean_response_time_mean"],
                 )
+
+    def test_memo_sweep_covers_formal_scenario_parameters(self) -> None:
+        base = SimulationConfig(num_requests=20, seed=789)
+
+        configs = memo_sweep_configs(base)
+        points = {
+            (config.effective_neighbor_es_availability, config.origin_delay)
+            for config in configs
+        }
+
+        self.assertIn(0.25, MEMO_NEIGHBOR_ES_AVAILABILITIES)
+        self.assertIn(0.82, MEMO_NEIGHBOR_ES_AVAILABILITIES)
+        self.assertIn(180.0, MEMO_ORIGIN_DELAYS)
+        self.assertIn(320.0, MEMO_ORIGIN_DELAYS)
+        self.assertIn((0.25, 180.0), points)
+        self.assertIn((0.82, 180.0), points)
+        self.assertIn((0.82, 320.0), points)
+        self.assertTrue(
+            all(
+                config.local_es_availability == MEMO_LOCAL_ES_AVAILABILITY
+                for config in configs
+            )
+        )
 
 
 def _trial_row(policy: str, trial_index: int, mean_response_time: float) -> dict:

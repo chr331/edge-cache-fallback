@@ -57,6 +57,12 @@ sensitivity / grid 统计入口：
 python scripts\run_repeated.py
 ```
 
+Ueyama-sensei memo 专用 heatmap sweep：
+
+```powershell
+python scripts\run_memo_sweep.py
+```
+
 开发验证可用较小规模：
 
 ```powershell
@@ -77,13 +83,13 @@ python scripts\build_report.py
 
 - `steady`: local 和 neighbor 都使用正常可用率 `0.82`，对应定常シナリオ。
 - `low_reliability_neighbor`: local 保持 `0.82`，neighbor 降到 `0.25`，对应低信頼近隣ESシナリオ。
-- `origin_congestion`: local / neighbor 保持 `0.82`，origin delay 提高到 `320.0`，对应オリジン輻輳シナリオ。
+- `origin_congestion`: local / neighbor 保持 `0.82`，origin delay 提高到 `320.0`。这是兼容旧输出的内部名称；对外说明时对应オリジン遅延増加シナリオ，不应写成真实的拥塞或队列模型。
 
 这里的 `neighbor_es_availability` 是本次补齐的关键字段。它让模型可以表达“local 正常，但近隣协作组低可靠”的情况。
 
 ## repeated trials 与 grid sweep
 
-`scripts/run_repeated.py` 默认对 baseline、`origin_delay` sweep、`es_availability` sweep 以及二维 `origin_delay x es_availability` grid 做重复实验。默认 `trials = 10`，每次 trial 的 seed 使用 `base_seed + trial_index`，用于估计 Monte Carlo 方差和 95% confidence interval。
+`scripts/run_repeated.py` 默认对 baseline、`origin_delay` sweep、`es_availability` sweep 以及二维 `origin_delay x neighbor_es_availability` grid 做重复实验。默认 `trials = 10`，每次 trial 的 seed 使用 `base_seed + trial_index`，用于估计 Monte Carlo 方差和 95% confidence interval。
 
 二维 grid 会计算：
 
@@ -100,10 +106,12 @@ B2 advantage vs B1 = B1 mean_response_time - B2 mean_response_time
 - `results/scenario_summary.csv`: 三个正式场景的 repeated-trial 汇总。
 - `results/scenario_trials.csv`: 三个正式场景的每个 trial summary。
 - `results/repeated_summary.csv`: repeated trials 的 mean、std、stderr 和 95% CI。
-- `results/grid_summary.csv`: 二维 `origin_delay x es_availability` grid 的 repeated 统计。
+- `results/grid_summary.csv`: 二维 `origin_delay x neighbor_es_availability` grid 的 repeated 统计。
+- `results/memo_heatmap_summary.csv`: 覆盖正式场景参数的 memo 专用 sensitivity grid。
 - `results/repeated_trials.csv`: 每个 trial 的 policy-level summary。
 - `results/figures/`: Nature-style 静态图表，包含 SVG、PDF、PNG 和 TIFF。
 - `results/edge_cache_fallback_report.xlsx`: 本地阅读用 Excel 报告，包含 repeated summary 和 B2 advantage grid sheet。
+- `memo/phase1_progress_memo_ja.tex`: 给 Ueyama-sensei 的两页日文进捗メモ LaTeX 源文件。
 - `phase1_results.ch.md`: 第一阶段中文结果解读。
 - `phase1_results.ja.md`: 第一阶段日文结果解读。
 
