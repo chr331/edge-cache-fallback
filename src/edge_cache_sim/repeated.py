@@ -24,6 +24,8 @@ REPEATED_COLUMNS = [
     "sweep_value",
     "origin_delay",
     "es_availability",
+    "local_es_availability",
+    "neighbor_es_availability",
     "zipf_alpha",
     "local_es_count",
     "neighbor_group_size",
@@ -81,6 +83,8 @@ def aggregate_trial_rows(rows: Iterable[dict]) -> list[dict]:
         "sweep_value",
         "origin_delay",
         "es_availability",
+        "local_es_availability",
+        "neighbor_es_availability",
         "zipf_alpha",
         "local_es_count",
         "neighbor_group_size",
@@ -113,7 +117,15 @@ def aggregate_trial_rows(rows: Iterable[dict]) -> list[dict]:
 
 
 def _with_b2_advantage(rows: list[dict]) -> list[dict]:
-    key_columns = ["scenario", "sweep_name", "sweep_value", "origin_delay", "es_availability"]
+    key_columns = [
+        "scenario",
+        "sweep_name",
+        "sweep_value",
+        "origin_delay",
+        "es_availability",
+        "local_es_availability",
+        "neighbor_es_availability",
+    ]
     if not rows:
         return rows
 
@@ -146,6 +158,7 @@ def _with_b2_advantage(rows: list[dict]) -> list[dict]:
             str(row["sweep_value"]),
             _numeric_sort_value(row["origin_delay"]),
             _numeric_sort_value(row["es_availability"]),
+            _numeric_sort_value(row["neighbor_es_availability"]),
             _policy_sort_key(row["policy"]),
         ),
     )

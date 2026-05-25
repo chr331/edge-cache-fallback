@@ -33,7 +33,7 @@ def run_policy(policy: str, config: SimulationConfig, seed: int | None = None) -
     rows = []
 
     for index, content_id in enumerate(requests):
-        local_chunks = rng.binomial(config.local_es_count, config.es_availability)
+        local_chunks = rng.binomial(config.local_es_count, config.local_es_availability)
         local_success = local_chunks >= config.k
 
         if local_success:
@@ -65,7 +65,10 @@ def run_policy(policy: str, config: SimulationConfig, seed: int | None = None) -
             )
             continue
 
-        neighbor_chunks = rng.binomial(config.neighbor_group_size, config.es_availability)
+        neighbor_chunks = rng.binomial(
+            config.neighbor_group_size,
+            config.effective_neighbor_es_availability,
+        )
         neighbor_success = neighbor_chunks >= config.k
 
         if neighbor_success:
@@ -118,7 +121,7 @@ def _zipf_requests(config: SimulationConfig, rng: np.random.Generator) -> np.nda
 def _should_try_neighbor(config: SimulationConfig) -> bool:
     success_probability = _recovery_probability(
         node_count=config.neighbor_group_size,
-        availability=config.es_availability,
+        availability=config.effective_neighbor_es_availability,
         k=config.k,
     )
     expected_neighbor_delay = (
@@ -182,6 +185,8 @@ def _row(
         "completion": completion,
         "zipf_alpha": config.zipf_alpha,
         "es_availability": config.es_availability,
+        "local_es_availability": config.local_es_availability,
+        "neighbor_es_availability": config.effective_neighbor_es_availability,
         "origin_delay": config.origin_delay,
         "local_es_count": config.local_es_count,
         "neighbor_group_size": config.neighbor_group_size,

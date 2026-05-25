@@ -19,6 +19,7 @@ The default first-stage experiment uses these baseline values:
 | `num_requests` | `10000` |
 | `zipf_alpha` | `1.1` |
 | `es_availability` | `0.82` |
+| `neighbor_es_availability` | same as `es_availability` unless overridden |
 | `origin_delay` | `180.0` |
 | `local_es_count` | `3` |
 | `neighbor_group_size` | `5` |
@@ -42,6 +43,7 @@ pip install -r requirements.txt
 ```powershell
 python scripts\run_experiment.py
 python scripts\run_sweep.py
+python scripts\run_scenarios.py
 python scripts\run_repeated.py
 python scripts\build_figures.py
 python scripts\build_report.py
@@ -50,6 +52,7 @@ python scripts\build_report.py
 For a faster development check:
 
 ```powershell
+python scripts\run_scenarios.py --trials 3 --num-requests 1000
 python scripts\run_repeated.py --trials 3 --num-requests 1000
 ```
 
@@ -57,6 +60,8 @@ python scripts\run_repeated.py --trials 3 --num-requests 1000
 
 - `results/summary.csv`: baseline summary with one row per policy.
 - `results/sweep_summary.csv`: origin-delay and ES-availability sensitivity results.
+- `results/scenario_summary.csv`: repeated-trial results for the formal steady, low-reliability-neighbor, and origin-congestion scenarios.
+- `results/scenario_trials.csv`: per-trial policy summaries used to build the formal scenario statistics.
 - `results/repeated_summary.csv`: repeated-trial means, standard errors, and 95% confidence intervals.
 - `results/grid_summary.csv`: two-dimensional `origin_delay x es_availability` repeated sweep.
 - `results/repeated_trials.csv`: per-trial policy summaries used to build repeated statistics.
@@ -77,6 +82,8 @@ The baseline summary uses these fields:
 - `neighbor_failure_rate`
 - `zipf_alpha`
 - `es_availability`
+- `local_es_availability`
+- `neighbor_es_availability`
 - `origin_delay`
 - `local_es_count`
 - `neighbor_group_size`
@@ -98,4 +105,4 @@ python -m unittest discover -s tests
 
 ## Scope
 
-The current model intentionally stays simple. It does not yet model queueing, congestion, request arrivals, service capacity, online trust estimation, or real CDN traces. Those extensions are planned after the baseline fallback logic and parameter sweeps are stable.
+The current model intentionally stays simple and should be read as a preliminary Monte Carlo simulation. It does not yet model queueing, congestion, request arrivals, service capacity, online trust estimation, or real CDN traces. Those extensions are planned after the first-stage scenario evidence is stable.

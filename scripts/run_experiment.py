@@ -18,6 +18,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--num-requests", type=int, default=10_000)
     parser.add_argument("--zipf-alpha", type=float, default=1.1)
     parser.add_argument("--es-availability", type=float, default=0.82)
+    parser.add_argument("--neighbor-es-availability", type=float, default=None)
     parser.add_argument("--origin-delay", type=float, default=180.0)
     parser.add_argument("--local-es-count", type=int, default=3)
     parser.add_argument("--neighbor-group-size", type=int, default=5)
@@ -34,6 +35,7 @@ def main() -> None:
         num_requests=args.num_requests,
         zipf_alpha=args.zipf_alpha,
         es_availability=args.es_availability,
+        neighbor_es_availability=args.neighbor_es_availability,
         origin_delay=args.origin_delay,
         local_es_count=args.local_es_count,
         neighbor_group_size=args.neighbor_group_size,

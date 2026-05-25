@@ -10,6 +10,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from edge_cache_sim import (  # noqa: E402
     SimulationConfig,
     aggregate_trial_rows,
+    formal_scenarios,
     run_policy,
     run_repeated_trials,
     run_scenario,
@@ -76,6 +77,67 @@ class SimulatorTests(unittest.TestCase):
         self.assertTrue(all(row["origin_used"] for row in rows))
         self.assertTrue(all(not row["neighbor_attempted"] for row in rows))
 
+    def test_neighbor_availability_can_differ_from_local_availability(self) -> None:
+        config = SimulationConfig(
+            num_requests=20,
+            local_es_count=1,
+            neighbor_group_size=3,
+            k=1,
+            es_availability=1.0,
+            neighbor_es_availability=0.0,
+        )
+
+        local_rows = run_policy("B0", config)
+        neighbor_config = SimulationConfig(
+            num_requests=20,
+            local_es_count=0,
+            neighbor_group_size=3,
+            k=1,
+            es_availability=1.0,
+            neighbor_es_availability=0.0,
+        )
+        neighbor_rows = run_policy("B1", neighbor_config)
+
+        self.assertTrue(all(row["completion"] == "local" for row in local_rows))
+        self.assertTrue(all(row["completion"] == "origin_after_neighbor" for row in neighbor_rows))
+        self.assertEqual(1.0, neighbor_rows[0]["local_es_availability"])
+        self.assertEqual(0.0, neighbor_rows[0]["neighbor_es_availability"])
+
+    def test_b2_expected_delay_uses_neighbor_availability(self) -> None:
+        config = SimulationConfig(
+            num_requests=20,
+            local_es_count=0,
+            neighbor_group_size=3,
+            k=1,
+            es_availability=1.0,
+            neighbor_es_availability=0.0,
+            origin_delay=180.0,
+        )
+
+        rows = run_policy("B2", config)
+
+        self.assertTrue(all(row["completion"] == "b2_origin_choice" for row in rows))
+        self.assertTrue(all(not row["neighbor_attempted"] for row in rows))
+
+    def test_b2_reduces_invalid_neighbor_search_when_neighbor_is_unreliable(self) -> None:
+        config = SimulationConfig(
+            num_requests=20,
+            local_es_count=0,
+            neighbor_group_size=5,
+            k=3,
+            es_availability=0.82,
+            neighbor_es_availability=0.25,
+            origin_delay=180.0,
+        )
+
+        b1_rows = run_policy("B1", config)
+        b2_rows = run_policy("B2", config)
+
+        self.assertGreater(
+            sum(1 for row in b1_rows if row["neighbor_attempted"]),
+            sum(1 for row in b2_rows if row["neighbor_attempted"]),
+        )
+
     def test_scenario_summary_contains_all_policies(self) -> None:
         config = SimulationConfig(num_requests=20)
 
@@ -119,6 +181,28 @@ class SimulatorTests(unittest.TestCase):
 
         self.assertEqual(first_rows, second_rows)
 
+    def test_formal_scenarios_include_all_policies_with_valid_ci(self) -> None:
+        base = SimulationConfig(num_requests=20, seed=789)
+
+        for config in formal_scenarios(base):
+            rows, _ = run_repeated_trials(
+                config,
+                trials=2,
+                sweep_name="formal_scenario",
+                sweep_value=config.scenario,
+            )
+
+            self.assertEqual(["B0", "B1", "B2"], [row["policy"] for row in rows])
+            for row in rows:
+                self.assertLessEqual(
+                    row["mean_response_time_ci95_low"],
+                    row["mean_response_time_mean"],
+                )
+                self.assertGreaterEqual(
+                    row["mean_response_time_ci95_high"],
+                    row["mean_response_time_mean"],
+                )
+
 
 def _trial_row(policy: str, trial_index: int, mean_response_time: float) -> dict:
     return {
@@ -133,6 +217,8 @@ def _trial_row(policy: str, trial_index: int, mean_response_time: float) -> dict
         "neighbor_failure_rate": 0.1,
         "zipf_alpha": 1.1,
         "es_availability": 0.82,
+        "local_es_availability": 0.82,
+        "neighbor_es_availability": 0.82,
         "origin_delay": 180.0,
         "local_es_count": 3,
         "neighbor_group_size": 5,

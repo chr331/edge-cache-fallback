@@ -144,3 +144,39 @@ baseline では、`B1` と `B2` の mean response time はほぼ同じです。`
 ### 次の段階
 
 次は `phase1_results.ch.md` と `phase1_results.ja.md` をもとに、Ueyama-sensei 向けの短い progress memo draft を作成できます。memo では、B2 を最終的に最適な policy と主張するのではなく、第一段階の simulation と統計処理の流れが整ったことを中心に説明するのが安全です。
+
+## 2026-05-25：第一段階の三シナリオ補完
+
+### 本段階のテーマ
+
+この段階では、第一段階の結果を baseline / sweep から、研究計画書に対応する三つの正式 scenario へ拡張しました。対象は、定常シナリオ、低信頼近隣ESシナリオ、オリジン輻輳シナリオです。目的は、第一段階の結果を研究計画書の評価設計と対応させることです。
+
+### 実施内容
+
+- local ES availability と neighbor ES availability を分離しました。`es_availability` は互換性のために残し、`neighbor_es_availability` で近隣 ES 協調グループの信頼性を個別に制御できるようにしました。
+- `src/edge_cache_sim/scenarios.py` を追加し、`steady`、`low_reliability_neighbor`、`origin_congestion` の三つの正式 scenario を定義しました。
+- `scripts/run_scenarios.py` を追加し、`results/scenario_summary.csv` と `results/scenario_trials.csv` を出力するようにしました。
+- `scripts/build_figures.py` を更新し、三 scenario の mean response time、三 scenario の p95 response time、低信頼 neighbor scenario の rates figure を追加しました。
+- `scripts/build_report.py` を更新し、Excel report に `Formal Scenarios` sheet を追加しました。
+- `README.md`、`README.ch.md`、`README.ja.md`、`phase1_results.ch.md`、`phase1_results.ja.md` を更新し、三 scenario、`neighbor_es_availability`、結果解釈、現在の制限を説明しました。
+- unit tests を追加し、local / neighbor availability の分離、B2 expected delay が neighbor availability を使うこと、低信頼 neighbor 条件で B2 が無効な探索を抑制すること、三 scenario の policy order と CI の妥当性を確認しました。
+
+### 三つの scenario 設定
+
+- `steady`: local と neighbor の両方を通常可用率 `0.82`、origin delay を `180.0` に設定します。
+- `low_reliability_neighbor`: local は `0.82` のまま、neighbor を `0.25` に下げ、origin delay は `180.0` にします。
+- `origin_congestion`: local と neighbor は `0.82` のまま、origin delay を `320.0` に上げます。
+
+### 現在の結果判断
+
+`steady` scenario で `B1` と `B2` が近いことは自然な結果です。`B2` の `B1` に対する mean response time advantage は `0.0198` にとどまり、neighbor が信頼できる場合には、B2 の判断も B1 と同様に neighbor fallback を選びやすいことを示しています。
+
+`low_reliability_neighbor` scenario が今回の補完で最も重要な結果です。`B1` の neighbor failure rate は `0.89777`、mean response time は `106.5593`、p95 response time は `229.0214` でした。一方、`B2` は無効な neighbor search をほぼ避け、mean response time は `100.7891`、p95 response time は `201.3767` でした。`B2` の `B1` に対する mean response time advantage は `5.7702` です。
+
+`origin_congestion` scenario では、origin delay の増加により `B0` が大きく悪化し、mean response time は `163.6239` になりました。`B1` と `B2` は信頼できる neighbor を利用できるため、mean response time は約 `47.6` で、`B0` より明らかに良い結果です。ただし、neighbor が信頼できるため、`B1` と `B2` の差は小さいままです。
+
+### 第一段階の状態
+
+code、results、figures、documents の観点では、第一段階は報告可能な状態まで到達しました。現在の成果物には、三 scenario の repeated results、sensitivity / grid data、confidence interval、Nature-style figures、Excel report、中国語・日本語の結果解釈が含まれます。
+
+次は Ueyama-sensei 向けの progress memo draft に進めます。memo では、現在の結果は preliminary Monte Carlo simulation であり、完全な discrete-event simulation ではないことを明確にする必要があります。また、`B2` の主な価値は、すべての scenario で `B1` を大きく上回ることではなく、低信頼 neighbor ES 条件で無効な fallback を避ける点にあると説明するのが適切です。

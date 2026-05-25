@@ -20,7 +20,8 @@
 | `num_contents` | `500` | Zipf 型の人気分布を見るための中程度のコンテンツ空間。 |
 | `num_requests` | `10000` | mean と p95 を安定させるためのデフォルトサンプル数。 |
 | `zipf_alpha` | `1.1` | 人気の偏りはあるが極端すぎない要求分布。 |
-| `es_availability` | `0.82` | local / neighbor recovery の成功と失敗が両方出る設定。 |
+| `es_availability` | `0.82` | 旧スクリプトとの互換性を保つ値で、デフォルトでは local ES availability として使います。 |
+| `neighbor_es_availability` | デフォルトは `es_availability` と同じ | neighbor ES の可用率を別に下げるための値。低信頼近隣ESシナリオで使います。 |
 | `origin_delay` | `180.0` | origin を local / neighbor 経路より明確に遅くする設定。 |
 | `local_es_count` | `3` | local 側の chunk source を限定。 |
 | `neighbor_group_size` | `5` | neighbor pool を少し大きくして協調復元の効果を見る。 |
@@ -44,7 +45,13 @@ python scripts\run_experiment.py
 python scripts\run_sweep.py
 ```
 
-第一段階の正式な統計実行:
+第一段階の三つの正式 scenario:
+
+```powershell
+python scripts\run_scenarios.py
+```
+
+sensitivity / grid の統計実行:
 
 ```powershell
 python scripts\run_repeated.py
@@ -53,6 +60,7 @@ python scripts\run_repeated.py
 開発確認用の軽い実行:
 
 ```powershell
+python scripts\run_scenarios.py --trials 3 --num-requests 1000
 python scripts\run_repeated.py --trials 3 --num-requests 1000
 ```
 
@@ -62,6 +70,16 @@ python scripts\run_repeated.py --trials 3 --num-requests 1000
 python scripts\build_figures.py
 python scripts\build_report.py
 ```
+
+## 三つの正式 scenario
+
+`scripts/run_scenarios.py` は研究計画書に対応する三つの scenario を生成します。
+
+- `steady`: local と neighbor の両方を通常可用率 `0.82` にします。定常シナリオに対応します。
+- `low_reliability_neighbor`: local は `0.82` のまま、neighbor を `0.25` に下げます。低信頼近隣ESシナリオに対応します。
+- `origin_congestion`: local / neighbor は `0.82` のまま、origin delay を `320.0` に上げます。オリジン輻輳シナリオに対応します。
+
+今回追加した `neighbor_es_availability` により、「local は通常だが近隣協調グループだけが低信頼」という条件を表現できます。
 
 ## repeated trials と grid sweep
 
@@ -79,6 +97,8 @@ B2 advantage vs B1 = B1 mean_response_time - B2 mean_response_time
 
 - `results/summary.csv`: baseline 結果。policy ごとに 1 行。
 - `results/sweep_summary.csv`: `origin_delay` と `es_availability` の single-seed sweep。
+- `results/scenario_summary.csv`: 三つの正式 scenario の repeated-trial summary。
+- `results/scenario_trials.csv`: 三つの正式 scenario の trial ごとの summary。
 - `results/repeated_summary.csv`: repeated trials の mean、std、stderr、95% CI。
 - `results/grid_summary.csv`: 二次元 `origin_delay x es_availability` grid の repeated 統計。
 - `results/repeated_trials.csv`: trial ごとの policy-level summary。

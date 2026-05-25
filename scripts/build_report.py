@@ -14,6 +14,7 @@ SUMMARY_PATH = ROOT / "results" / "summary.csv"
 SWEEP_PATH = ROOT / "results" / "sweep_summary.csv"
 REPEATED_PATH = ROOT / "results" / "repeated_summary.csv"
 GRID_PATH = ROOT / "results" / "grid_summary.csv"
+SCENARIO_PATH = ROOT / "results" / "scenario_summary.csv"
 REPORT_PATH = ROOT / "results" / "edge_cache_fallback_report.xlsx"
 
 
@@ -25,6 +26,7 @@ def main() -> None:
     sweep_data = _read_csv(SWEEP_PATH) if SWEEP_PATH.exists() else None
     repeated_data = _read_csv(REPEATED_PATH) if REPEATED_PATH.exists() else None
     grid_data = _read_csv(GRID_PATH) if GRID_PATH.exists() else None
+    scenario_data = _read_csv(SCENARIO_PATH) if SCENARIO_PATH.exists() else None
 
     workbook = Workbook()
     overview = workbook.active
@@ -35,10 +37,11 @@ def main() -> None:
     origin_sweep = workbook.create_sheet("Origin Delay Sweep")
     availability_sweep = workbook.create_sheet("ES Availability Sweep")
     b2_advantage = workbook.create_sheet("B2 Advantage")
+    formal_scenarios = workbook.create_sheet("Formal Scenarios")
     repeated_trials = workbook.create_sheet("Repeated Trials")
     b2_grid = workbook.create_sheet("B2 Advantage Grid")
 
-    _build_overview(overview, data, sweep_data, repeated_data, grid_data)
+    _build_overview(overview, data, sweep_data, repeated_data, grid_data, scenario_data)
     _build_parameters(parameters, data)
     _build_summary(summary, data)
     _build_charts(charts, data)
@@ -66,6 +69,11 @@ def main() -> None:
     else:
         _build_empty_note(repeated_trials, "Run scripts/run_repeated.py to add CI results.")
 
+    if scenario_data is not None:
+        _build_formal_scenarios(formal_scenarios, scenario_data)
+    else:
+        _build_empty_note(formal_scenarios, "Run scripts/run_scenarios.py to add scenario results.")
+
     if grid_data is not None:
         _build_b2_grid(b2_grid, grid_data)
     else:
@@ -91,6 +99,7 @@ def _build_overview(
     sweep_data: list[dict] | None,
     repeated_data: list[dict] | None,
     grid_data: list[dict] | None,
+    scenario_data: list[dict] | None,
 ) -> None:
     best_mean = min(data, key=lambda row: _float(row["mean_response_time"]))
     best_p95 = min(data, key=lambda row: _float(row["p95_response_time"]))
@@ -109,6 +118,11 @@ def _build_overview(
         if grid_data is not None
         else "No grid results found yet. Run scripts/run_repeated.py to add them."
     )
+    scenario_note = (
+        "Formal three-scenario results included."
+        if scenario_data is not None
+        else "No formal scenario results found yet. Run scripts/run_scenarios.py to add them."
+    )
 
     rows = [
         ["Edge Cache Fallback Report", ""],
@@ -123,6 +137,7 @@ def _build_overview(
         ["Sweep status", sweep_note],
         ["Repeated-trial status", repeated_note],
         ["Grid status", grid_note],
+        ["Scenario status", scenario_note],
     ]
     for row in rows:
         sheet.append(row)
@@ -132,7 +147,7 @@ def _build_overview(
     sheet["A1"].fill = PatternFill("solid", fgColor="1F4E79")
     for cell in sheet["A"]:
         cell.font = Font(bold=True)
-    for row_index in range(6, 10):
+    for row_index in range(6, 11):
         sheet[f"A{row_index}"].alignment = Alignment(wrap_text=True)
         sheet[f"B{row_index}"].alignment = Alignment(wrap_text=True)
 
@@ -141,6 +156,8 @@ def _build_parameters(sheet, data: list[dict]) -> None:
     parameter_cols = [
         "zipf_alpha",
         "es_availability",
+        "local_es_availability",
+        "neighbor_es_availability",
         "origin_delay",
         "local_es_count",
         "neighbor_group_size",
@@ -149,9 +166,9 @@ def _build_parameters(sheet, data: list[dict]) -> None:
     sheet.append(["Parameter", "Value"])
     first_row = data[0]
     for name in parameter_cols:
-        sheet.append([name, _coerce(first_row[name])])
+        sheet.append([name, _coerce(first_row.get(name, ""))])
     _style_header(sheet, "A1:B1")
-    _add_table(sheet, "A1:B7", "ParametersTable")
+    _add_table(sheet, f"A1:B{len(parameter_cols) + 1}", "ParametersTable")
 
 
 def _build_summary(sheet, data: list[dict]) -> None:
@@ -294,6 +311,42 @@ def _build_repeated_trials(sheet, data: list[dict]) -> None:
         for cell in sheet[col][2:]:
             cell.number_format = "0.000"
     for col in ("J", "K"):
+        for cell in sheet[col][2:]:
+            cell.number_format = "0.00%"
+
+
+def _build_formal_scenarios(sheet, data: list[dict]) -> None:
+    sheet.append(["Formal Three-Scenario Summary"])
+    sheet["A1"].font = Font(size=14, bold=True, color="FFFFFF")
+    sheet["A1"].fill = PatternFill("solid", fgColor="1F4E79")
+    sheet.merge_cells("A1:M1")
+
+    display_cols = [
+        "scenario",
+        "policy",
+        "trial_count",
+        "origin_delay",
+        "local_es_availability",
+        "neighbor_es_availability",
+        "mean_response_time_mean",
+        "mean_response_time_ci95_low",
+        "mean_response_time_ci95_high",
+        "p95_response_time_mean",
+        "origin_free_rate_mean",
+        "neighbor_failure_rate_mean",
+        "b2_advantage_vs_b1_mean",
+    ]
+    sheet.append(display_cols)
+    for row in data:
+        sheet.append([_coerce(row.get(column, "")) for column in display_cols])
+
+    _style_header(sheet, "A2:M2")
+    _add_table(sheet, f"A2:M{len(data) + 2}", "FormalScenariosTable")
+
+    for col in ("D", "G", "H", "I", "J", "M"):
+        for cell in sheet[col][2:]:
+            cell.number_format = "0.000"
+    for col in ("E", "F", "K", "L"):
         for cell in sheet[col][2:]:
             cell.number_format = "0.00%"
 

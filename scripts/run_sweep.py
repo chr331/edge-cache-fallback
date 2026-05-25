@@ -33,6 +33,7 @@ def main() -> None:
             base,
             scenario="es_availability_sweep",
             es_availability=es_availability,
+            neighbor_es_availability=es_availability,
             seed=base.seed + int(es_availability * 1000),
         )
         rows.extend(_run(config, "es_availability", es_availability))

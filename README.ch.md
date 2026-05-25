@@ -20,7 +20,8 @@
 | `num_contents` | `500` | 中等内容空间，用于模拟 Zipf 热点分布。 |
 | `num_requests` | `10000` | 默认样本量，用于稳定 mean 和 p95。 |
 | `zipf_alpha` | `1.1` | 有热点但不过分极端的请求分布。 |
-| `es_availability` | `0.82` | 让 local / neighbor recovery 同时存在成功和失败。 |
+| `es_availability` | `0.82` | 兼容旧脚本，也作为默认 local ES 可用率。 |
+| `neighbor_es_availability` | 默认同 `es_availability` | 可单独降低 neighbor ES 可用率，用于低信頼近隣ES场景。 |
 | `origin_delay` | `180.0` | 让 origin 明显慢于 local / neighbor 路径。 |
 | `local_es_count` | `3` | local 侧 chunk 来源有限。 |
 | `neighbor_group_size` | `5` | neighbor 池略大，用于观察协作恢复收益。 |
@@ -44,7 +45,13 @@ python scripts\run_experiment.py
 python scripts\run_sweep.py
 ```
 
-第一阶段正式统计入口：
+第一阶段三场景正式统计入口：
+
+```powershell
+python scripts\run_scenarios.py
+```
+
+sensitivity / grid 统计入口：
 
 ```powershell
 python scripts\run_repeated.py
@@ -53,6 +60,7 @@ python scripts\run_repeated.py
 开发验证可用较小规模：
 
 ```powershell
+python scripts\run_scenarios.py --trials 3 --num-requests 1000
 python scripts\run_repeated.py --trials 3 --num-requests 1000
 ```
 
@@ -62,6 +70,16 @@ python scripts\run_repeated.py --trials 3 --num-requests 1000
 python scripts\build_figures.py
 python scripts\build_report.py
 ```
+
+## 三个正式场景
+
+`scripts/run_scenarios.py` 会生成研究计划书对应的三个场景：
+
+- `steady`: local 和 neighbor 都使用正常可用率 `0.82`，对应定常シナリオ。
+- `low_reliability_neighbor`: local 保持 `0.82`，neighbor 降到 `0.25`，对应低信頼近隣ESシナリオ。
+- `origin_congestion`: local / neighbor 保持 `0.82`，origin delay 提高到 `320.0`，对应オリジン輻輳シナリオ。
+
+这里的 `neighbor_es_availability` 是本次补齐的关键字段。它让模型可以表达“local 正常，但近隣协作组低可靠”的情况。
 
 ## repeated trials 与 grid sweep
 
@@ -79,6 +97,8 @@ B2 advantage vs B1 = B1 mean_response_time - B2 mean_response_time
 
 - `results/summary.csv`: baseline 结果，每个 policy 一行。
 - `results/sweep_summary.csv`: `origin_delay` 和 `es_availability` 的单 seed sweep。
+- `results/scenario_summary.csv`: 三个正式场景的 repeated-trial 汇总。
+- `results/scenario_trials.csv`: 三个正式场景的每个 trial summary。
 - `results/repeated_summary.csv`: repeated trials 的 mean、std、stderr 和 95% CI。
 - `results/grid_summary.csv`: 二维 `origin_delay x es_availability` grid 的 repeated 统计。
 - `results/repeated_trials.csv`: 每个 trial 的 policy-level summary。

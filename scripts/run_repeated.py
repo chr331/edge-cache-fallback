@@ -55,6 +55,7 @@ def main() -> None:
             base,
             scenario="es_availability_repeated",
             es_availability=availability,
+            neighbor_es_availability=availability,
             seed=args.seed + int(availability * 1000),
         )
         rows, trials = run_repeated_trials(
@@ -75,6 +76,7 @@ def main() -> None:
                     scenario="origin_delay_x_es_availability",
                     origin_delay=origin_delay,
                     es_availability=availability,
+                    neighbor_es_availability=availability,
                     seed=args.seed + int(origin_delay * 10) + int(availability * 1000),
                 )
                 rows, _ = run_repeated_trials(
