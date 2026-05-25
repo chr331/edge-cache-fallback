@@ -190,4 +190,5 @@ def _row(
 
 
 def _with_jitter(base_delay: float, rng: np.random.Generator) -> float:
+    """Add a small positive-skew delay so per-request latency is less deterministic."""
     return max(1.0, base_delay + rng.gamma(shape=2.0, scale=2.5))
