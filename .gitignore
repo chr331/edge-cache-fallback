@@ -16,3 +16,4 @@ memo/*.aux
 memo/*.log
 memo/*.out
 memo/*.synctex.gz
+overleaf/*.zip
