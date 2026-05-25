@@ -1,6 +1,6 @@
 # Edge Cache Fallback Simulation
 
-このリポジトリは、低信頼な edge-cache 環境における fallback-control policy を対象にした第一段階の Monte Carlo シミュレーションです。現時点の目的は、複雑なシステムモデルを最初から作ることではなく、B0/B1/B2 の比較、baseline、parameter sweep、Excel report、research log までの再現可能な流れを作ることです。
+このリポジトリは、低信頼な edge-cache 環境における fallback-control policy の第一段階シミュレーションです。現時点の目的は、`B0`、`B1`、`B2` の三つの policy を再現可能で統計的に報告できる Monte Carlo 実験にすることであり、queueing、congestion、real trace、trust-learning はまだ導入しません。
 
 - English: [README.md](./README.md)
 - Chinese: [README.ch.md](./README.ch.md)
@@ -9,31 +9,23 @@
 
 ## Policy 定義
 
-- `B0`: local ES で内容を復元できない場合、直接 origin に fallback します。
-- `B1`: local ES が失敗した場合、まず neighbor cooperative ES を探索し、neighbor でも失敗したら origin に fallback します。
-- `B2`: local ES が失敗した場合、neighbor search の期待遅延と直接 origin delay を比較し、期待遅延が小さい方を選択します。
+- `B0`: local ES で復元できない場合、直接 origin に fallback します。
+- `B1`: local ES が失敗した後、先に neighbor cooperative ES を探索し、neighbor も失敗した場合に origin に fallback します。
+- `B2`: local ES が失敗した後、neighbor-search の期待遅延と直接 origin に行く遅延を比較し、期待遅延が小さい行動を選びます。
 
 ## 第一段階の実験設定
 
-第一段階では Monte Carlo シミュレーションを使い、queueing、congestion、request arrival process、service capacity はまだ導入していません。まず fallback logic と metric calculation を安定させ、その後でモデルを拡張する方針です。
-
-| パラメータ | baseline 値 | 設定理由 |
+| パラメータ | baseline 値 | 説明 |
 | --- | ---: | --- |
-| `num_contents` | `500` | コンテンツ空間を中程度にして、Zipf 的な人気の偏りを観察しやすくしています。 |
-| `num_requests` | `10000` | サンプル数を十分に確保し、mean と p95 を安定させています。 |
-| `zipf_alpha` | `1.1` | ホットスポットはあるが極端すぎない需要分布として、baseline に適しています。 |
-| `es_availability` | `0.82` | local / neighbor recovery の成功と失敗の両方が出るため、三つの policy を比較しやすくしています。 |
-| `origin_delay` | `180.0` | origin を local や neighbor より明確に遅くし、fallback の価値が見えやすいようにしています。 |
-| `local_es_count` | `3` | local 側の chunk source を限定し、local recovery が常に成功しないようにしています。 |
-| `neighbor_group_size` | `5` | neighbor pool を local より少し大きくし、cooperative recovery の効果を見やすくしています。 |
-| `k` | `3` | 復元には少なくとも 3 chunks が必要という erasure-coding の基本制約を残しています。 |
-| `local_probe_delay` | `12.0` | local の探索コストを表します。 |
-| `neighbor_probe_delay` | `28.0` | neighbor 探索は local より高コストですが、origin より有利な場合があります。 |
-| `local_recovery_delay` | `18.0` | local recovery 完了後の基本遅延を表します。 |
-| `neighbor_recovery_delay` | `48.0` | neighbor recovery は local より遅いが、origin が遅い状況では有効になり得ます。 |
-| `seed` | `20260525` | 乱数シードを固定し、baseline と sweep の再現性を確保しています。 |
-
-Latency jitter に関する説明は README ではなく research log に記録しています。これはモデル説明と実験記録に属する内容だからです。
+| `num_contents` | `500` | Zipf 型の人気分布を見るための中程度のコンテンツ空間。 |
+| `num_requests` | `10000` | mean と p95 を安定させるためのデフォルトサンプル数。 |
+| `zipf_alpha` | `1.1` | 人気の偏りはあるが極端すぎない要求分布。 |
+| `es_availability` | `0.82` | local / neighbor recovery の成功と失敗が両方出る設定。 |
+| `origin_delay` | `180.0` | origin を local / neighbor 経路より明確に遅くする設定。 |
+| `local_es_count` | `3` | local 側の chunk source を限定。 |
+| `neighbor_group_size` | `5` | neighbor pool を少し大きくして協調復元の効果を見る。 |
+| `k` | `3` | 復元には少なくとも 3 chunks が必要。 |
+| `seed` | `20260525` | 再現性のための固定 seed。 |
 
 ## 環境
 
@@ -45,26 +37,59 @@ pip install -r requirements.txt
 
 ## 実行
 
+baseline と single-seed sweep:
+
 ```powershell
 python scripts\run_experiment.py
 python scripts\run_sweep.py
+```
+
+第一段階の正式な統計実行:
+
+```powershell
+python scripts\run_repeated.py
+```
+
+開発確認用の軽い実行:
+
+```powershell
+python scripts\run_repeated.py --trials 3 --num-requests 1000
+```
+
+読みやすい Excel report の生成:
+
+```powershell
 python scripts\build_report.py
 ```
 
+## repeated trials と grid sweep
+
+`scripts/run_repeated.py` はデフォルトで baseline、`origin_delay` sweep、`es_availability` sweep、二次元の `origin_delay x es_availability` grid を repeated trials として実行します。デフォルトは `trials = 10` で、各 trial の seed は `base_seed + trial_index` として設定します。これにより Monte Carlo variance と 95% confidence interval を報告できます。
+
+二次元 grid では次の値を計算します。
+
+```text
+B2 advantage vs B1 = B1 mean_response_time - B2 mean_response_time
+```
+
+この値が正であれば、B2 の平均応答時間が B1 より低いことを意味します。
+
 ## 出力
 
-- `results/summary.csv`: baseline 結果。policy ごとに 1 行です。
-- `results/sweep_summary.csv`: `origin_delay` と `es_availability` の sensitivity 結果です。
-- `results/edge_cache_fallback_report.xlsx`: ローカルで読むための Excel report です。
-- `research_log.ch.md`: 中国語研究ログです。
-- `research_log.ja.md`: 日本語研究ログです。
+- `results/summary.csv`: baseline 結果。policy ごとに 1 行。
+- `results/sweep_summary.csv`: `origin_delay` と `es_availability` の single-seed sweep。
+- `results/repeated_summary.csv`: repeated trials の mean、std、stderr、95% CI。
+- `results/grid_summary.csv`: 二次元 `origin_delay x es_availability` grid の repeated 統計。
+- `results/repeated_trials.csv`: trial ごとの policy-level summary。
+- `results/edge_cache_fallback_report.xlsx`: repeated summary と B2 advantage grid sheet を含む Excel report。
 
 ## 主な指標
 
 - `mean_response_time`: 平均応答時間。
-- `p95_response_time`: 95 パーセンタイル応答時間。tail latency を見るために使います。
-- `origin_free_rate`: origin にアクセスせずに完了した割合。
+- `p95_response_time`: 95 percentile 応答時間。tail latency の確認に使います。
+- `origin_free_rate`: origin にアクセスせず完了した割合。
 - `neighbor_failure_rate`: neighbor fallback を試した後も失敗した割合。
+- `b2_advantage_vs_b1_mean`: B1 と B2 の平均応答時間差。定義は `B1 - B2`。
 
 ## 検証
 

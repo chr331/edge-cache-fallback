@@ -42,15 +42,25 @@ pip install -r requirements.txt
 ```powershell
 python scripts\run_experiment.py
 python scripts\run_sweep.py
+python scripts\run_repeated.py
 python scripts\build_report.py
+```
+
+For a faster development check:
+
+```powershell
+python scripts\run_repeated.py --trials 3 --num-requests 1000
 ```
 
 ## Outputs
 
 - `results/summary.csv`: baseline summary with one row per policy.
 - `results/sweep_summary.csv`: origin-delay and ES-availability sensitivity results.
+- `results/repeated_summary.csv`: repeated-trial means, standard errors, and 95% confidence intervals.
+- `results/grid_summary.csv`: two-dimensional `origin_delay x es_availability` repeated sweep.
+- `results/repeated_trials.csv`: per-trial policy summaries used to build repeated statistics.
 - `results/edge_cache_fallback_report.xlsx`: formatted local workbook for reading.
-- `research_log.md`: stage-by-stage research notes.
+- `research_log.md`: language-specific research-log index.
 
 ## CSV Schema
 
@@ -68,6 +78,14 @@ The baseline summary uses these fields:
 - `local_es_count`
 - `neighbor_group_size`
 - `k`
+
+The repeated summary adds:
+
+- `trial_count`
+- `sweep_name`
+- `sweep_value`
+- metric columns ending in `_mean`, `_std`, `_stderr`, `_ci95_low`, and `_ci95_high`
+- `b2_advantage_vs_b1_mean`
 
 ## Validate
 

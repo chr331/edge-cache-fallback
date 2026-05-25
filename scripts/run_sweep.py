@@ -1,10 +1,9 @@
 from __future__ import annotations
 
+import csv
 import sys
 from dataclasses import replace
 from pathlib import Path
-
-import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -40,20 +39,18 @@ def main() -> None:
 
     results_dir = ROOT / "results"
     results_dir.mkdir(exist_ok=True)
-    frame = pd.DataFrame(rows)
     column_order = SUMMARY_COLUMNS + ["sweep_name", "sweep_value", "b2_advantage_vs_b1"]
-    frame = frame[column_order]
-    frame.to_csv(results_dir / "sweep_summary.csv", index=False)
+    _write_csv(results_dir / "sweep_summary.csv", rows, column_order)
 
-    print(frame.to_string(index=False))
+    print(_format_table(rows, column_order))
     print(f"\nWrote {results_dir / 'sweep_summary.csv'}")
 
 
 def _run(config: SimulationConfig, sweep_name: str, sweep_value: float) -> list[dict]:
     summary_rows, _ = run_scenario(config)
-    frame = pd.DataFrame(summary_rows)
-    b1_mean = float(frame.loc[frame["policy"] == "B1", "mean_response_time"].iloc[0])
-    b2_mean = float(frame.loc[frame["policy"] == "B2", "mean_response_time"].iloc[0])
+    by_policy = {row["policy"]: row for row in summary_rows}
+    b1_mean = float(by_policy["B1"]["mean_response_time"])
+    b2_mean = float(by_policy["B2"]["mean_response_time"])
     b2_advantage = round(b1_mean - b2_mean, 3)
 
     rows = []
@@ -64,6 +61,25 @@ def _run(config: SimulationConfig, sweep_name: str, sweep_value: float) -> list[
         row["b2_advantage_vs_b1"] = b2_advantage if row["policy"] == "B2" else ""
         rows.append(row)
     return rows
+
+
+def _write_csv(path: Path, rows: list[dict], fieldnames: list[str]) -> None:
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def _format_table(rows: list[dict], columns: list[str]) -> str:
+    table = [[str(row[column]) for column in columns] for row in rows]
+    widths = [
+        max(len(column), *(len(row[index]) for row in table))
+        for index, column in enumerate(columns)
+    ]
+    lines = [" ".join(column.ljust(widths[index]) for index, column in enumerate(columns))]
+    for row in table:
+        lines.append(" ".join(value.ljust(widths[index]) for index, value in enumerate(row)))
+    return "\n".join(lines)
 
 
 if __name__ == "__main__":

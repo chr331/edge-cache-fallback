@@ -7,7 +7,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from edge_cache_sim import SimulationConfig, run_policy, run_scenario  # noqa: E402
+from edge_cache_sim import (  # noqa: E402
+    SimulationConfig,
+    aggregate_trial_rows,
+    run_policy,
+    run_repeated_trials,
+    run_scenario,
+)
 
 
 class SimulatorTests(unittest.TestCase):
@@ -77,6 +83,61 @@ class SimulatorTests(unittest.TestCase):
 
         self.assertEqual(["B0", "B1", "B2"], [row["policy"] for row in summary_rows])
         self.assertEqual(60, len(raw_rows))
+
+    def test_repeated_trials_report_trial_count_and_ci(self) -> None:
+        config = SimulationConfig(num_requests=20, seed=123)
+
+        rows, _ = run_repeated_trials(config, trials=3, sweep_name="baseline")
+
+        self.assertEqual({3}, {row["trial_count"] for row in rows})
+        for row in rows:
+            self.assertLessEqual(
+                row["mean_response_time_ci95_low"],
+                row["mean_response_time_mean"],
+            )
+            self.assertGreaterEqual(
+                row["mean_response_time_ci95_high"],
+                row["mean_response_time_mean"],
+            )
+
+    def test_b2_advantage_uses_b1_minus_b2_mean_response_time(self) -> None:
+        rows = []
+        for trial_index, (b1_mean, b2_mean) in enumerate([(10.0, 7.0), (14.0, 9.0)]):
+            rows.append(_trial_row("B1", trial_index, b1_mean))
+            rows.append(_trial_row("B2", trial_index, b2_mean))
+
+        aggregated = aggregate_trial_rows(rows)
+        b2_row = next(row for row in aggregated if row["policy"] == "B2")
+
+        self.assertEqual(4.0, b2_row["b2_advantage_vs_b1_mean"])
+
+    def test_repeated_trials_are_reproducible_with_fixed_seed(self) -> None:
+        config = SimulationConfig(num_requests=20, seed=456)
+
+        first_rows, _ = run_repeated_trials(config, trials=2, sweep_name="baseline")
+        second_rows, _ = run_repeated_trials(config, trials=2, sweep_name="baseline")
+
+        self.assertEqual(first_rows, second_rows)
+
+
+def _trial_row(policy: str, trial_index: int, mean_response_time: float) -> dict:
+    return {
+        "scenario": "unit",
+        "policy": policy,
+        "trial_index": trial_index,
+        "sweep_name": "baseline",
+        "sweep_value": "",
+        "mean_response_time": mean_response_time,
+        "p95_response_time": mean_response_time + 1.0,
+        "origin_free_rate": 0.5,
+        "neighbor_failure_rate": 0.1,
+        "zipf_alpha": 1.1,
+        "es_availability": 0.82,
+        "origin_delay": 180.0,
+        "local_es_count": 3,
+        "neighbor_group_size": 5,
+        "k": 3,
+    }
 
 
 if __name__ == "__main__":

@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 import numpy as np
-import pandas as pd
 
 
 SUMMARY_COLUMNS = [
@@ -25,16 +24,18 @@ SUMMARY_COLUMNS = [
 
 
 def summarize_runs(rows: Iterable[dict], config) -> dict:
-    frame = pd.DataFrame(rows)
-    neighbor_attempts = frame["neighbor_attempted"].sum()
-    neighbor_failures = frame["neighbor_failed"].sum()
+    rows = list(rows)
+    response_times = np.array([row["response_time"] for row in rows], dtype=float)
+    neighbor_attempts = sum(1 for row in rows if row["neighbor_attempted"])
+    neighbor_failures = sum(1 for row in rows if row["neighbor_failed"])
+    origin_uses = sum(1 for row in rows if row["origin_used"])
 
     return {
         "scenario": config.scenario,
-        "policy": frame["policy"].iloc[0],
-        "mean_response_time": round(float(frame["response_time"].mean()), 3),
-        "p95_response_time": round(float(np.percentile(frame["response_time"], 95)), 3),
-        "origin_free_rate": round(float(1.0 - frame["origin_used"].mean()), 4),
+        "policy": rows[0]["policy"],
+        "mean_response_time": round(float(response_times.mean()), 3),
+        "p95_response_time": round(float(np.percentile(response_times, 95)), 3),
+        "origin_free_rate": round(float(1.0 - origin_uses / len(rows)), 4),
         "neighbor_failure_rate": round(
             float(neighbor_failures / neighbor_attempts) if neighbor_attempts else 0.0,
             4,

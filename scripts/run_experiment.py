@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import sys
 from pathlib import Path
-
-import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -46,16 +45,34 @@ def main() -> None:
     results_dir = ROOT / "results"
     results_dir.mkdir(exist_ok=True)
 
-    summary = pd.DataFrame(summary_rows, columns=SUMMARY_COLUMNS)
-    summary.to_csv(results_dir / "summary.csv", index=False)
+    _write_csv(results_dir / "summary.csv", summary_rows, SUMMARY_COLUMNS)
 
     if args.write_raw:
-        pd.DataFrame(raw_rows).to_csv(results_dir / "raw_requests.csv", index=False)
+        _write_csv(results_dir / "raw_requests.csv", raw_rows, raw_rows[0].keys())
 
-    print(summary.to_string(index=False))
+    print(_format_table(summary_rows, SUMMARY_COLUMNS))
     print(f"\nWrote {results_dir / 'summary.csv'}")
     if args.write_raw:
         print(f"Wrote {results_dir / 'raw_requests.csv'}")
+
+
+def _write_csv(path: Path, rows: list[dict], fieldnames) -> None:
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(fieldnames))
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def _format_table(rows: list[dict], columns: list[str]) -> str:
+    table = [[str(row[column]) for column in columns] for row in rows]
+    widths = [
+        max(len(column), *(len(row[index]) for row in table))
+        for index, column in enumerate(columns)
+    ]
+    lines = [" ".join(column.ljust(widths[index]) for index, column in enumerate(columns))]
+    for row in table:
+        lines.append(" ".join(value.ljust(widths[index]) for index, value in enumerate(row)))
+    return "\n".join(lines)
 
 
 if __name__ == "__main__":
