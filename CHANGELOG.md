@@ -7,9 +7,10 @@ to audit.
 
 ### Added
 
-- Added `docs/phase1_b2_zipf_report.md`, a detailed Chinese-readable experiment report
-  with embedded SVG figures, B2 model explanation, experiment commands, result tables,
-  and reviewer-style limitations.
+- Added `docs/phase1_b2_zipf_report.md`, a detailed Chinese experiment report with
+  embedded SVG figures, B2 model explanation, experiment commands, result tables,
+  claim-evidence mapping, first-reader readability audit, meaningfulness audit, and
+  reviewer-style limitations.
 - Linked the report from `README.md` and `docs/project_map.md` so readers can find it
   before opening raw CSV files.
 
