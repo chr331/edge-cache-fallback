@@ -13,7 +13,10 @@ TRIAL_METRICS = [
     "mean_response_time",
     "p95_response_time",
     "origin_free_rate",
+    "local_failure_rate",
+    "neighbor_attempt_rate",
     "neighbor_failure_rate",
+    "b2_neighbor_choice_rate",
 ]
 
 REPEATED_COLUMNS = [
@@ -30,6 +33,9 @@ REPEATED_COLUMNS = [
     "local_es_count",
     "neighbor_group_size",
     "k",
+    "neighbor_cache_hot_prob",
+    "neighbor_cache_cold_prob",
+    "neighbor_cache_rank_gamma",
 ]
 
 for _metric in TRIAL_METRICS:
@@ -89,6 +95,9 @@ def aggregate_trial_rows(rows: Iterable[dict]) -> list[dict]:
         "local_es_count",
         "neighbor_group_size",
         "k",
+        "neighbor_cache_hot_prob",
+        "neighbor_cache_cold_prob",
+        "neighbor_cache_rank_gamma",
     ]
 
     grouped: dict[tuple, list[dict]] = {}
@@ -125,6 +134,13 @@ def _with_b2_advantage(rows: list[dict]) -> list[dict]:
         "es_availability",
         "local_es_availability",
         "neighbor_es_availability",
+        "zipf_alpha",
+        "local_es_count",
+        "neighbor_group_size",
+        "k",
+        "neighbor_cache_hot_prob",
+        "neighbor_cache_cold_prob",
+        "neighbor_cache_rank_gamma",
     ]
     if not rows:
         return rows

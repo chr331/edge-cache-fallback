@@ -7,6 +7,8 @@ results/*.png
 results/*.pdf
 results/*.svg
 results/*.xlsx
+results/**/*.png
+results/**/*.tiff
 results/figures/*.png
 results/figures/*.pdf
 !results/figures/fig_phase1_memo_*.pdf
