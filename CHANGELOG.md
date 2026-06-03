@@ -3,6 +3,16 @@
 All notable project updates are recorded here so that future result batches are easier
 to audit.
 
+## 2026-06-03: Phase 1.1 Detailed Experiment Report
+
+### Added
+
+- Added `docs/phase1_b2_zipf_report.md`, a detailed Chinese-readable experiment report
+  with embedded SVG figures, B2 model explanation, experiment commands, result tables,
+  and reviewer-style limitations.
+- Linked the report from `README.md` and `docs/project_map.md` so readers can find it
+  before opening raw CSV files.
+
 ## 2026-06-03: Phase 1.1 Request-Level B2 And Zipf Sensitivity
 
 ### Added

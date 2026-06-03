@@ -9,6 +9,7 @@ Phase 1 outputs in place and adds new versioned result batches for later updates
 | --- | --- |
 | `README.md` | High-level project explanation, model scope, and quick navigation. |
 | `docs/experiment_guide.md` | Step-by-step commands for running, testing, and interpreting Phase 1.1. |
+| `docs/phase1_b2_zipf_report.md` | Detailed Phase 1.1 experiment report with embedded figures and reviewer-style interpretation. |
 | `CHANGELOG.md` | Chronological record of project updates. |
 | `src/edge_cache_sim/` | Simulation model, policy logic, scenarios, repeated-trial aggregation. |
 | `scripts/` | Command-line entry points for experiments, figures, reports, and manifests. |

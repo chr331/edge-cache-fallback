@@ -253,6 +253,7 @@ The most important result pattern is conditional:
 | `results/phase1_b2_zipf/manifest.json` | Commands, git state, model defaults, and generated files for the Phase 1.1 batch. |
 | `docs/project_map.md` | Project navigation: what each directory is for and how new result batches should be organized. |
 | `docs/experiment_guide.md` | Beginner-friendly Phase 1.1 reproduction guide with commands, outputs, and metric definitions. |
+| `docs/phase1_b2_zipf_report.md` | Detailed Chinese experiment report for Phase 1.1 with embedded figures and reviewer-style interpretation. |
 | `results/edge_cache_fallback_report.xlsx` | Formatted Excel report for reading results without manually opening CSV files. |
 | `phase1_results.ch.md` | Chinese first-stage result interpretation. |
 | `phase1_results.ja.md` | Japanese first-stage result interpretation. |
