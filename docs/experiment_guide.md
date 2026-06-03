@@ -41,6 +41,7 @@ This checks:
 - Neighbor cache probability decreases with rank.
 - Neighbor recovery uses `missing_chunks`, not a fixed requirement of `K` chunks.
 - B2 can choose neighbors for hot content and origin for cold content.
+- Fallback-stage metrics focus on requests where local recovery failed.
 - Repeated-trial aggregation remains reproducible and includes the new metrics.
 
 ### 2. Smoke Run
@@ -68,7 +69,7 @@ python scripts/write_manifest.py --output-dir results/phase1_b2_zipf --command "
 
 | File | Meaning |
 | --- | --- |
-| `scenario_summary.csv` | Repeated-trial summary for steady, low-reliability neighbor, and origin-delay increase scenarios. |
+| `scenario_summary.csv` | Repeated-trial summary for steady, low-reliability neighbor, origin-delay increase, and decision-boundary diagnostic scenarios. |
 | `scenario_trials.csv` | Per-trial scenario summaries used to compute confidence intervals. |
 | `neighbor_origin_grid_summary.csv` | Sensitivity grid over neighbor availability and origin delay. |
 | `zipf_sensitivity_summary.csv` | Sensitivity grid over `zipf_alpha` and `neighbor_cache_rank_gamma`. |
@@ -83,12 +84,16 @@ python scripts/write_manifest.py --output-dir results/phase1_b2_zipf --command "
 | --- | --- |
 | `mean_response_time` | Average request response time in milliseconds. |
 | `p95_response_time` | 95th percentile response time, used for tail latency. |
+| `fallback_mean_response_time` | Mean response time among requests with `missing_chunks > 0`; this isolates the fallback-decision stage. |
+| `fallback_p95_response_time` | 95th percentile response time among local-failure requests. |
 | `origin_free_rate` | Fraction of requests completed without origin access. |
 | `local_failure_rate` | Fraction of requests where local ES could not reconstruct the file. |
 | `neighbor_attempt_rate` | Fraction of all requests that probed the neighbor group. |
 | `neighbor_failure_rate` | Fraction of neighbor attempts that failed and then needed origin access. |
+| `neighbor_skip_rate` | Fraction of local-failure decisions where the policy skipped neighbor probing. |
 | `b2_neighbor_choice_rate` | For B2 only: fraction of local-failure decisions where B2 selected neighbor probing. |
 | `b2_advantage_vs_b1_mean` | `B1 mean - B2 mean`; positive values mean B2 is faster than B1. |
+| `b2_fallback_advantage_vs_b1_mean` | `B1 fallback mean - B2 fallback mean`; positive values mean B2 is faster after local recovery fails. |
 
 ## What The Phase 1.1 Figures Show
 
@@ -97,11 +102,14 @@ The figure set is designed around one claim:
 > Request-level B2 suppresses low-value neighbor probing while preserving neighbor
 > cooperation when the expected delay is favorable.
 
-The scenario bars show whether B2 behaves reasonably under the three formal research-plan
-scenarios. The neighbor/origin heatmap shows where B2 is most useful compared with static
-B1. The Zipf/cache heatmap shows that B2 becomes more valuable when cache probability is
-more rank-sensitive. The rank-bucket figure directly checks that B2 is more willing to use
-neighbors for hot content than for mid/cold content in a decision-boundary setting.
+The scenario bars show whether B2 behaves reasonably under the three research-plan
+scenarios and the decision-boundary diagnostic scenario. The fallback-stage scenario
+figure focuses on requests where local recovery failed, which makes the B1/B2 decision
+difference easier to see. The neighbor/origin heatmap shows where B2 is most useful
+compared with static B1. The Zipf/cache heatmap shows that B2 becomes more valuable when
+cache probability is more rank-sensitive. The rank-bucket figure directly checks that B2
+is more willing to use neighbors for hot content than for mid/cold content in a
+decision-boundary setting.
 
 ## Scope Limit
 

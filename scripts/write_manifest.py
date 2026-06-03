@@ -39,6 +39,7 @@ def main() -> None:
         "notes": [
             "Phase 1.1 is still a Monte Carlo simulation, not a queueing or real congestion model.",
             "The origin_congestion key means origin-delay increase in this first-stage repository.",
+            "The decision_boundary_neighbor scenario and fallback-stage metrics diagnose when B2 differs visibly from B1.",
             "PNG/TIFF files are generated for visual QA; SVG/PDF are the main figure artifacts.",
         ],
     }

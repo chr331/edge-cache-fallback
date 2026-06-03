@@ -234,6 +234,8 @@ class SimulatorTests(unittest.TestCase):
                 row["mean_response_time_mean"],
             )
             self.assertIn("neighbor_attempt_rate_mean", row)
+            self.assertIn("neighbor_skip_rate_mean", row)
+            self.assertIn("fallback_mean_response_time_mean", row)
             self.assertIn("b2_neighbor_choice_rate_mean", row)
 
     def test_b2_advantage_uses_b1_minus_b2_mean_response_time(self) -> None:
@@ -246,6 +248,7 @@ class SimulatorTests(unittest.TestCase):
         b2_row = next(row for row in aggregated if row["policy"] == "B2")
 
         self.assertEqual(4.0, b2_row["b2_advantage_vs_b1_mean"])
+        self.assertEqual(4.0, b2_row["b2_fallback_advantage_vs_b1_mean"])
 
     def test_repeated_trials_are_reproducible_with_fixed_seed(self) -> None:
         config = SimulationConfig(num_requests=20, seed=456)
@@ -257,6 +260,9 @@ class SimulatorTests(unittest.TestCase):
 
     def test_formal_scenarios_include_all_policies_with_valid_ci(self) -> None:
         base = SimulationConfig(num_requests=20, seed=789)
+        scenario_names = [config.scenario for config in formal_scenarios(base)]
+
+        self.assertIn("decision_boundary_neighbor", scenario_names)
 
         for config in formal_scenarios(base):
             rows, _ = run_repeated_trials(
@@ -276,6 +282,23 @@ class SimulatorTests(unittest.TestCase):
                     row["mean_response_time_ci95_high"],
                     row["mean_response_time_mean"],
                 )
+
+    def test_fallback_metrics_focus_on_local_failures(self) -> None:
+        config = SimulationConfig(
+            num_requests=20,
+            local_es_count=0,
+            neighbor_group_size=0,
+            k=1,
+            es_availability=1.0,
+        )
+
+        summary_rows, _ = run_scenario(config)
+        b0_row = next(row for row in summary_rows if row["policy"] == "B0")
+
+        self.assertEqual(1.0, b0_row["local_failure_rate"])
+        self.assertEqual(b0_row["mean_response_time"], b0_row["fallback_mean_response_time"])
+        self.assertEqual(b0_row["p95_response_time"], b0_row["fallback_p95_response_time"])
+        self.assertEqual(1.0, b0_row["neighbor_skip_rate"])
 
     def test_memo_sweep_covers_formal_scenario_parameters(self) -> None:
         base = SimulationConfig(num_requests=20, seed=789)
@@ -310,9 +333,12 @@ def _trial_row(policy: str, trial_index: int, mean_response_time: float) -> dict
         "sweep_value": "",
         "mean_response_time": mean_response_time,
         "p95_response_time": mean_response_time + 1.0,
+        "fallback_mean_response_time": mean_response_time,
+        "fallback_p95_response_time": mean_response_time + 1.0,
         "origin_free_rate": 0.5,
         "local_failure_rate": 0.5,
         "neighbor_attempt_rate": 0.5,
+        "neighbor_skip_rate": 0.0,
         "neighbor_failure_rate": 0.1,
         "b2_neighbor_choice_rate": 0.5,
         "zipf_alpha": 1.1,

@@ -37,11 +37,17 @@ mpl.rcParams.update(
 ROOT = Path(__file__).resolve().parents[1]
 
 POLICY_ORDER = ["B0", "B1", "B2"]
-SCENARIO_ORDER = ["steady", "low_reliability_neighbor", "origin_congestion"]
+SCENARIO_ORDER = [
+    "steady",
+    "low_reliability_neighbor",
+    "origin_congestion",
+    "decision_boundary_neighbor",
+]
 SCENARIO_LABELS = {
     "steady": "Steady",
     "low_reliability_neighbor": "Low-reliability\nneighbor",
     "origin_congestion": "Origin delay\nincrease",
+    "decision_boundary_neighbor": "Decision-boundary\nneighbor",
 }
 POLICY_COLORS = {
     "B0": "#4C78A8",
@@ -79,7 +85,7 @@ def main() -> None:
             scenario_rows,
             metric="mean_response_time",
             ylabel="Mean response time (ms)",
-            title="Mean response time across formal scenarios",
+            title="Mean response time across formal/diagnostic scenarios",
             filename="fig_phase1_b2zipf_scenario_mean_response_time",
             figure_dir=figure_dir,
         )
@@ -87,8 +93,16 @@ def main() -> None:
             scenario_rows,
             metric="p95_response_time",
             ylabel="p95 response time (ms)",
-            title="Tail response time across formal scenarios",
+            title="Tail response time across formal/diagnostic scenarios",
             filename="fig_phase1_b2zipf_scenario_p95_response_time",
+            figure_dir=figure_dir,
+        )
+        _plot_scenario_metric(
+            scenario_rows,
+            metric="fallback_mean_response_time",
+            ylabel="Mean response time after local miss (ms)",
+            title="Fallback-stage mean latency across formal/diagnostic scenarios",
+            filename="fig_phase1_b2zipf_fallback_mean_response_time",
             figure_dir=figure_dir,
         )
         _plot_low_reliability_rates(scenario_rows, figure_dir)
@@ -158,7 +172,7 @@ def _plot_scenario_metric(
     if missing:
         raise ValueError(f"Missing scenario rows: {', '.join(missing)}")
 
-    fig, ax = plt.subplots(figsize=(5.25, 2.85), constrained_layout=True)
+    fig, ax = plt.subplots(figsize=(6.25, 2.85), constrained_layout=True)
     x = np.arange(len(SCENARIO_ORDER))
     width = 0.23
 

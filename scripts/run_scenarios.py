@@ -21,7 +21,7 @@ from edge_cache_sim.repeated import REPEATED_COLUMNS  # noqa: E402
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Run repeated trials for the three formal phase-1 scenarios."
+        description="Run repeated trials for formal and diagnostic phase-1 scenarios."
     )
     parser.add_argument("--trials", type=int, default=10)
     parser.add_argument("--num-requests", type=int, default=10_000)

@@ -3,6 +3,35 @@
 All notable project updates are recorded here so that future result batches are easier
 to audit.
 
+## 2026-06-03: Phase 1.1 Latency-Difference Audit
+
+### Added
+
+- Added fallback-stage latency metrics:
+  - `fallback_mean_response_time`;
+  - `fallback_p95_response_time`;
+  - `neighbor_skip_rate`;
+  - `b2_fallback_advantage_vs_b1_mean`.
+- Added the `decision_boundary_neighbor` diagnostic scenario to show where B2 visibly
+  differs from B1 in latency, instead of relying only on the three research-plan
+  scenarios where all-request mean latency gaps are modest.
+- Added `fig_phase1_b2zipf_fallback_mean_response_time.svg/pdf`, which isolates requests
+  with `missing_chunks > 0`.
+
+### Changed
+
+- Updated the detailed report, README, experiment guide, and project map to state that
+  B2/B1 latency differences are small in the original research-plan scenario bars and
+  clearer in fallback-stage and decision-boundary analysis.
+- Regenerated the Phase 1.1 result batch with 10 trials and 10,000 requests per trial.
+
+### Validation
+
+- `python -m unittest discover -s tests`: 18 tests passed.
+- `python -m compileall src scripts tests`: passed.
+- Full scenario, Zipf/cache sweep, figure build, and manifest generation completed for
+  `results/phase1_b2_zipf/`.
+
 ## 2026-06-03: Phase 1.1 Detailed Experiment Report
 
 ### Added

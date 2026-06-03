@@ -12,9 +12,12 @@ from .simulator import POLICY_ORDER, run_scenario
 TRIAL_METRICS = [
     "mean_response_time",
     "p95_response_time",
+    "fallback_mean_response_time",
+    "fallback_p95_response_time",
     "origin_free_rate",
     "local_failure_rate",
     "neighbor_attempt_rate",
+    "neighbor_skip_rate",
     "neighbor_failure_rate",
     "b2_neighbor_choice_rate",
 ]
@@ -50,6 +53,7 @@ for _metric in TRIAL_METRICS:
     )
 
 REPEATED_COLUMNS.append("b2_advantage_vs_b1_mean")
+REPEATED_COLUMNS.append("b2_fallback_advantage_vs_b1_mean")
 
 
 def run_repeated_trials(
@@ -146,6 +150,7 @@ def _with_b2_advantage(rows: list[dict]) -> list[dict]:
         return rows
 
     advantages: dict[tuple, float] = {}
+    fallback_advantages: dict[tuple, float] = {}
     grouped: dict[tuple, dict[str, dict]] = {}
     for row in rows:
         key = tuple(row[column] for column in key_columns)
@@ -156,6 +161,9 @@ def _with_b2_advantage(rows: list[dict]) -> list[dict]:
             b1_mean = float(policy_rows["B1"]["mean_response_time_mean"])
             b2_mean = float(policy_rows["B2"]["mean_response_time_mean"])
             advantages[key] = round(b1_mean - b2_mean, 6)
+            b1_fallback_mean = float(policy_rows["B1"]["fallback_mean_response_time_mean"])
+            b2_fallback_mean = float(policy_rows["B2"]["fallback_mean_response_time_mean"])
+            fallback_advantages[key] = round(b1_fallback_mean - b2_fallback_mean, 6)
 
     output: list[dict] = []
     for row in rows:
@@ -163,6 +171,9 @@ def _with_b2_advantage(rows: list[dict]) -> list[dict]:
         row = dict(row)
         row["b2_advantage_vs_b1_mean"] = (
             advantages.get(key, "") if row["policy"] == "B2" else ""
+        )
+        row["b2_fallback_advantage_vs_b1_mean"] = (
+            fallback_advantages.get(key, "") if row["policy"] == "B2" else ""
         )
         output.append(row)
 
