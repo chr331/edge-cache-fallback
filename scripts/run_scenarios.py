@@ -21,11 +21,12 @@ from edge_cache_sim.repeated import REPEATED_COLUMNS  # noqa: E402
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Run repeated trials for the three formal phase-1 scenarios."
+        description="Run repeated trials for formal and diagnostic phase-1 scenarios."
     )
     parser.add_argument("--trials", type=int, default=10)
     parser.add_argument("--num-requests", type=int, default=10_000)
     parser.add_argument("--seed", type=int, default=20260525)
+    parser.add_argument("--output-dir", default="results")
     return parser.parse_args()
 
 
@@ -48,8 +49,8 @@ def main() -> None:
     summary_rows = _order_rows(summary_rows)
     trial_rows = _order_rows(trial_rows)
 
-    results_dir = ROOT / "results"
-    results_dir.mkdir(exist_ok=True)
+    results_dir = _resolve_output_dir(args.output_dir)
+    results_dir.mkdir(parents=True, exist_ok=True)
     _write_csv(results_dir / "scenario_summary.csv", summary_rows, REPEATED_COLUMNS)
 
     trial_columns = SUMMARY_COLUMNS + ["trial_index", "trial_seed", "sweep_name", "sweep_value"]
@@ -65,6 +66,11 @@ def _write_csv(path: Path, rows: list[dict], fieldnames: list[str]) -> None:
         writer = csv.DictWriter(handle, fieldnames=fieldnames, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
+
+
+def _resolve_output_dir(value: str) -> Path:
+    path = Path(value)
+    return path if path.is_absolute() else ROOT / path
 
 
 def _format_table(rows: list[dict], columns: list[str]) -> str:

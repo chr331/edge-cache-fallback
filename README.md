@@ -30,10 +30,12 @@ The current phase does implement:
 - local edge-server recovery checks;
 - neighbor edge-server recovery checks;
 - three fallback policies, `B0`, `B1`, and `B2`;
+- request-level B2 decisions using the requested content rank and the number of missing chunks;
 - repeated trials with fixed seeds for reproducibility;
 - confidence intervals for reported metrics;
 - one-dimensional sensitivity sweeps;
 - a two-dimensional heatmap for the advantage of `B2` over `B1`;
+- Zipf/cache-rank sensitivity sweeps;
 - Nature-style research figures;
 - an Excel report for easier reading;
 - Chinese and Japanese result-interpretation documents.
@@ -90,10 +92,15 @@ This policy can reduce origin access when neighbors are reliable. However, when 
 - the expected delay of trying neighbors and falling back to origin if neighbors fail;
 - the delay of going directly to the origin.
 
-In simplified form, the current model estimates neighbor recovery success as:
+In Phase 1.1, this decision is made per request, not once per scenario. The current
+model estimates the number of chunks still needed after the local attempt, then adjusts
+neighbor success by content rank:
 
 ```text
-P_success = Pr(X >= K), where X follows a Binomial distribution
+missing_chunks = K - local_chunks
+p_cache(rank) = cold + (hot - cold) * rank ** (-zipf_alpha * cache_rank_gamma)
+p_chunk = neighbor_es_availability * p_cache(rank)
+P_success = Pr(Binomial(neighbor_group_size, p_chunk) >= missing_chunks)
 ```
 
 Then it compares:
@@ -117,6 +124,9 @@ The default first-stage experiment uses the following values.
 | `num_contents` | `500` | Number of content items in the simulated library. |
 | `num_requests` | `10000` | Number of requests per trial in the default experiment. |
 | `zipf_alpha` | `1.1` | Popularity skew of the request distribution. |
+| `neighbor_cache_hot_prob` | `0.90` | Estimated probability that a very hot item is cached by a neighbor ES. |
+| `neighbor_cache_cold_prob` | `0.15` | Estimated lower bound for cold-item neighbor caching. |
+| `neighbor_cache_rank_gamma` | `1.0` | Controls how strongly cache probability drops with content rank. |
 | `local_es_availability` | `0.82` | Normal local edge-server availability. |
 | `neighbor_es_availability` | `0.82` by default | Normal neighbor availability unless a scenario overrides it. |
 | `es_availability` | `0.82` | Compatibility field for older scripts. |
@@ -130,15 +140,16 @@ The default first-stage experiment uses the following values.
 | `neighbor_recovery_delay` | `48.0 ms` | Recovery delay when neighbor reconstruction succeeds. |
 | `seed` | `20260525` | Base random seed for reproducibility. |
 
-## 6. Formal Scenarios
+## 6. Formal And Diagnostic Scenarios
 
-The first-stage study now uses three formal scenarios. These scenarios are the main bridge between the code and the research plan.
+The first-stage study uses three research-plan scenarios plus one diagnostic decision-boundary scenario. The first three scenarios are the main bridge between the code and the research plan. The diagnostic scenario is included because the overall B1/B2 latency gap can be very small when B2 mostly chooses the same neighbor-first behavior as B1.
 
 | Scenario key | External explanation | Local availability | Neighbor availability | Origin delay | Purpose |
 | --- | --- | ---: | ---: | ---: | --- |
 | `steady` | steady scenario | `0.82` | `0.82` | `180 ms` | Tests whether neighbor fallback adds unnecessary overhead under normal conditions. |
 | `low_reliability_neighbor` | low-reliability neighbor ES scenario | `0.82` | `0.25` | `180 ms` | Tests whether `B2` avoids useless neighbor search when the neighbor group is unreliable. |
 | `origin_congestion` | origin-delay increase scenario | `0.82` | `0.82` | `320 ms` | Tests the value of edge cooperation when the origin path is more expensive. |
+| `decision_boundary_neighbor` | decision-boundary diagnostic scenario | `0.82` | `0.20` | `80 ms` | Makes the B1/B2 latency difference visible when low-value neighbor probing should be skipped. |
 
 The internal key `origin_congestion` is kept for compatibility with earlier output files. In reports and memos, it should be described as **origin-delay increase**, because the current model only increases `origin_delay`; it does not simulate queueing, request arrivals, service capacity, or real congestion.
 
@@ -152,9 +163,9 @@ The internal key `origin_congestion` is kept for compatibility with earlier outp
 
 `scripts/run_sweep.py` runs quick one-dimensional sweeps. It keeps the old fast workflow available so that the model can be checked quickly before running repeated trials.
 
-### 7.3 Formal Three-Scenario Repeated Experiment
+### 7.3 Formal/Diagnostic Repeated Experiment
 
-`scripts/run_scenarios.py` runs the three formal scenarios: `steady`, `low_reliability_neighbor`, and `origin_congestion` as the internal key for origin-delay increase.
+`scripts/run_scenarios.py` runs the three research-plan scenarios plus the `decision_boundary_neighbor` diagnostic scenario. The internal key `origin_congestion` is retained for origin-delay increase.
 
 For each scenario and each policy, the script runs repeated trials and reports statistics such as mean, standard deviation, standard error, and 95% confidence intervals.
 
@@ -191,6 +202,20 @@ This grid covers:
 - the steady scenario at `neighbor_es_availability = 0.82` and `origin_delay = 180`;
 - the origin-delay increase scenario at `neighbor_es_availability = 0.82` and `origin_delay = 320`.
 
+### 7.6 Phase 1.1 B2/Zipf Sweep
+
+`scripts/run_b2_zipf_sweep.py` is the main new Phase 1.1 sensitivity entry point. It
+keeps the `neighbor_es_availability x origin_delay` grid and adds a second grid over:
+
+```text
+zipf_alpha = [0.6, 0.8, 1.0, 1.1, 1.3, 1.5]
+neighbor_cache_rank_gamma = [0.3, 0.6, 1.0, 1.4, 2.0]
+```
+
+It also writes a hot/mid/cold rank-bucket summary so that the B2 decision can be checked
+directly: B2 should be more willing to search neighbors for hot content and less willing
+to probe neighbors for low-value cold requests.
+
 ## 8. Metrics
 
 The main metrics are:
@@ -199,15 +224,23 @@ The main metrics are:
 | --- | --- |
 | `mean_response_time` | Average response time across all simulated requests. |
 | `p95_response_time` | 95th percentile response time, used to observe tail latency. |
+| `fallback_mean_response_time` | Mean response time among requests with `missing_chunks > 0`, which isolates the fallback-decision stage. |
+| `fallback_p95_response_time` | 95th percentile response time among local-failure requests. |
 | `origin_free_rate` | Fraction of requests completed without accessing the origin. |
+| `local_failure_rate` | Fraction of requests where the local ES group could not reconstruct the file. |
+| `neighbor_attempt_rate` | Fraction of all requests that probed the neighbor cooperative group. |
 | `neighbor_failure_rate` | Fraction of neighbor fallback attempts that fail and then need origin fallback. |
+| `neighbor_skip_rate` | Fraction of local-failure decisions where the policy skipped neighbor probing. |
+| `b2_neighbor_choice_rate` | For B2 only: fraction of local-failure decisions where B2 selected neighbor probing. |
 | `b2_advantage_vs_b1_mean` | Difference between `B1` and `B2` mean response time. Defined as `B1 - B2`. Positive values mean `B2` is faster than `B1`. |
+| `b2_fallback_advantage_vs_b1_mean` | Difference between `B1` and `B2` fallback-stage mean response time. Positive values mean `B2` is faster after local recovery fails. |
 
 The most important result pattern is conditional:
 
 - Under normal conditions, `B1` and `B2` are often similar because `B2` also chooses neighbor search when neighbors are reliable.
 - Under low neighbor reliability, `B2` tends to behave closer to `B0` by suppressing unprofitable neighbor searches.
 - When origin delay is higher and neighbors are reliable, both `B1` and `B2` can benefit from neighbor fallback.
+- In decision-boundary settings, fallback-stage metrics make the B1/B2 latency difference clearer than all-request means.
 
 ## 9. Result Files
 
@@ -215,13 +248,18 @@ The most important result pattern is conditional:
 | --- | --- |
 | `results/summary.csv` | Baseline policy summary. |
 | `results/sweep_summary.csv` | Quick single-seed sweep results. |
-| `results/scenario_summary.csv` | Repeated-trial summary for the three formal scenarios. |
-| `results/scenario_trials.csv` | Per-trial summaries for the formal scenarios. |
+| `results/scenario_summary.csv` | Repeated-trial summary for the formal and diagnostic scenarios. |
+| `results/scenario_trials.csv` | Per-trial summaries for the formal and diagnostic scenarios. |
 | `results/repeated_summary.csv` | Repeated-trial means, standard deviations, standard errors, and 95% confidence intervals. |
 | `results/repeated_trials.csv` | Per-trial policy summaries for repeated experiments. |
 | `results/grid_summary.csv` | Two-dimensional repeated grid over origin delay and neighbor availability. |
 | `results/memo_heatmap_summary.csv` | Scenario-aligned heatmap grid covering the formal scenario settings. |
 | `results/figures/` | Publication-style figures exported as SVG, PDF, PNG, and TIFF. |
+| `results/phase1_b2_zipf/` | Versioned Phase 1.1 result batch for request-level B2, fallback-stage metrics, decision-boundary diagnostics, and Zipf/cache-rank sensitivity. |
+| `results/phase1_b2_zipf/manifest.json` | Commands, git state, model defaults, and generated files for the Phase 1.1 batch. |
+| `docs/project_map.md` | Project navigation: what each directory is for and how new result batches should be organized. |
+| `docs/experiment_guide.md` | Beginner-friendly Phase 1.1 reproduction guide with commands, outputs, and metric definitions. |
+| `docs/phase1_b2_zipf_report.md` | Detailed Chinese experiment report for Phase 1.1 with embedded figures and reviewer-style interpretation. |
 | `results/edge_cache_fallback_report.xlsx` | Formatted Excel report for reading results without manually opening CSV files. |
 | `phase1_results.ch.md` | Chinese first-stage result interpretation. |
 | `phase1_results.ja.md` | Japanese first-stage result interpretation. |
@@ -246,7 +284,7 @@ python scripts\run_experiment.py
 python scripts\run_sweep.py
 ```
 
-Run the formal first-stage scenarios:
+Run the formal and diagnostic first-stage scenarios:
 
 ```powershell
 python scripts\run_scenarios.py
@@ -264,6 +302,15 @@ Run the scenario-aligned heatmap sweep:
 python scripts\run_memo_sweep.py
 ```
 
+Run the Phase 1.1 request-level B2/Zipf workflow:
+
+```powershell
+python scripts\run_scenarios.py --trials 10 --num-requests 10000 --output-dir results/phase1_b2_zipf
+python scripts\run_b2_zipf_sweep.py --trials 10 --num-requests 10000 --output-dir results/phase1_b2_zipf
+python scripts\build_figures.py --results-dir results/phase1_b2_zipf
+python scripts\write_manifest.py --output-dir results/phase1_b2_zipf --command "python scripts/run_scenarios.py --trials 10 --num-requests 10000 --output-dir results/phase1_b2_zipf" --command "python scripts/run_b2_zipf_sweep.py --trials 10 --num-requests 10000 --output-dir results/phase1_b2_zipf" --command "python scripts/build_figures.py --results-dir results/phase1_b2_zipf"
+```
+
 Generate figures and Excel report:
 
 ```powershell
@@ -276,6 +323,7 @@ For faster development checks:
 ```powershell
 python scripts\run_scenarios.py --trials 3 --num-requests 1000
 python scripts\run_repeated.py --trials 3 --num-requests 1000
+python scripts\run_b2_zipf_sweep.py --trials 2 --num-requests 1000 --output-dir results/phase1_b2_zipf
 ```
 
 ## 11. Validation
@@ -286,7 +334,10 @@ Run unit tests:
 python -m unittest discover -s tests
 ```
 
-The test suite checks the main simulation behavior, repeated-trial statistics, confidence-interval consistency, policy ordering, local/neighbor availability separation, and the heatmap sweep coverage for the formal scenario parameters.
+The test suite checks the main simulation behavior, Zipf/cache probability behavior,
+request-level B2 decisions, repeated-trial statistics, confidence-interval consistency,
+policy ordering, local/neighbor availability separation, and the heatmap sweep coverage
+for the formal scenario parameters.
 
 ## 12. How to Read the Current Results
 

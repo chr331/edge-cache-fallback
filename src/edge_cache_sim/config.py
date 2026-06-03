@@ -21,6 +21,9 @@ class SimulationConfig:
     neighbor_probe_delay: float = 28.0
     local_recovery_delay: float = 18.0
     neighbor_recovery_delay: float = 48.0
+    neighbor_cache_hot_prob: float = 0.90
+    neighbor_cache_cold_prob: float = 0.15
+    neighbor_cache_rank_gamma: float = 1.0
     seed: int = 20260525
 
     @property

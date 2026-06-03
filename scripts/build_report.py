@@ -119,7 +119,7 @@ def _build_overview(
         else "No grid results found yet. Run scripts/run_repeated.py to add them."
     )
     scenario_note = (
-        "Formal three-scenario results included."
+        "Formal/diagnostic scenario results included."
         if scenario_data is not None
         else "No formal scenario results found yet. Run scripts/run_scenarios.py to add them."
     )
@@ -316,7 +316,7 @@ def _build_repeated_trials(sheet, data: list[dict]) -> None:
 
 
 def _build_formal_scenarios(sheet, data: list[dict]) -> None:
-    sheet.append(["Formal Three-Scenario Summary"])
+    sheet.append(["Formal/Diagnostic Scenario Summary"])
     sheet["A1"].font = Font(size=14, bold=True, color="FFFFFF")
     sheet["A1"].fill = PatternFill("solid", fgColor="1F4E79")
     sheet.merge_cells("A1:M1")

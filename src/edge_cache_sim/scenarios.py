@@ -1,4 +1,4 @@
-"""Formal first-stage scenario definitions."""
+"""Research-plan and diagnostic first-stage scenario definitions."""
 
 from __future__ import annotations
 
@@ -6,10 +6,16 @@ from dataclasses import replace
 
 from .config import SimulationConfig
 
-SCENARIO_ORDER = ("steady", "low_reliability_neighbor", "origin_congestion")
+SCENARIO_ORDER = (
+    "steady",
+    "low_reliability_neighbor",
+    "origin_congestion",
+    "decision_boundary_neighbor",
+)
 
 
 def formal_scenarios(base: SimulationConfig) -> list[SimulationConfig]:
+    """Return the three research-plan scenarios plus one decision-boundary diagnostic."""
     return [
         replace(
             base,
@@ -34,5 +40,13 @@ def formal_scenarios(base: SimulationConfig) -> list[SimulationConfig]:
             neighbor_es_availability=0.82,
             origin_delay=320.0,
             seed=base.seed + 20_000,
+        ),
+        replace(
+            base,
+            scenario="decision_boundary_neighbor",
+            es_availability=0.82,
+            neighbor_es_availability=0.20,
+            origin_delay=80.0,
+            seed=base.seed + 30_000,
         ),
     ]
